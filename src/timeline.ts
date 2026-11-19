@@ -5,7 +5,7 @@ import { t } from './i18n';
 import { SPEEDS, type Store } from './store';
 
 const SLIDER_MAX = 10000;
-const IMPORTANCE_COLOR = { 1: '#9b9584', 2: '#8fb3e0', 3: '#f0b35e' } as const;
+const IMPORTANCE_COLOR = { 1: '#7d86ad', 2: '#b69cff', 3: '#7fd8ff' } as const;
 const IMPORTANCE_HEIGHT = { 1: 7, 2: 10, 3: 13 } as const;
 const MARK_GAP = 12;
 const LANE_STEP = 9;

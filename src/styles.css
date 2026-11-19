@@ -1,11 +1,12 @@
 :root {
-  --bg: #020308;
-  --panel: rgba(9, 12, 20, 0.8);
-  --line: rgba(222, 204, 168, 0.16);
-  --fg: #ede6d4;
-  --soft: #d6cfbd;
-  --muted: #9b9584;
-  --accent: #f0b35e;
+  --bg: #03040c;
+  --panel: rgba(10, 13, 34, 0.78);
+  --line: rgba(150, 170, 255, 0.17);
+  --fg: #e7ecff;
+  --soft: #c6cde8;
+  --muted: #8a93b8;
+  --accent: #7fd8ff;
+  --nebula: #b69cff;
   --f-display: "Noto Serif Thai", "Noto Serif", Georgia, serif;
   --f-body: "IBM Plex Sans Thai", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -87,8 +88,8 @@ select:focus-visible {
   pointer-events: auto;
   cursor: pointer;
   text-shadow:
-    0 0 6px #020308,
-    0 0 2px #020308;
+    0 0 6px #03040c,
+    0 0 2px #03040c;
   will-change: transform;
 }
 
@@ -104,7 +105,7 @@ select:focus-visible {
 
 .label.k-moon,
 .label.k-asteroid {
-  color: #b8b2a3;
+  color: #aab3d4;
   font-weight: 400;
 }
 
@@ -124,14 +125,14 @@ select:focus-visible {
 }
 
 .label.region {
-  color: #8ea4c8;
+  color: #a99cf0;
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .label.star {
-  color: #e9d9b8;
+  color: #d8def5;
   font-weight: 400;
 }
 
@@ -159,7 +160,7 @@ select:focus-visible {
   left: var(--gl);
   max-width: min(380px, calc(100% - 32px));
   pointer-events: none;
-  text-shadow: 0 1px 12px #020308;
+  text-shadow: 0 1px 12px #03040c;
 }
 
 .brand h1 {
@@ -182,7 +183,7 @@ select:focus-visible {
 .lang {
   pointer-events: auto;
   appearance: none;
-  background: rgba(6, 8, 14, 0.5);
+  background: rgba(8, 10, 28, 0.5);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 4px 8px;
@@ -197,7 +198,7 @@ select:focus-visible {
 }
 
 .lang option {
-  background: #0b0e16;
+  background: #0b0e22;
   color: var(--fg);
 }
 
@@ -242,7 +243,7 @@ select:focus-visible {
 
 .search input:focus-visible {
   outline: none;
-  border-color: rgba(240, 179, 94, 0.6);
+  border-color: rgba(127, 216, 255, 0.6);
 }
 
 .search kbd {
@@ -275,7 +276,7 @@ select:focus-visible {
   margin: 0;
   padding: 4px;
   list-style: none;
-  background: rgba(9, 12, 20, 0.96);
+  background: rgba(10, 13, 34, 0.96);
   border: 1px solid var(--line);
   border-radius: 6px;
   max-height: 340px;
@@ -302,7 +303,7 @@ select:focus-visible {
 
 .search li[aria-selected="true"],
 .search li:hover {
-  background: rgba(240, 179, 94, 0.12);
+  background: rgba(127, 216, 255, 0.12);
 }
 
 .search .nm {
@@ -385,13 +386,13 @@ select:focus-visible {
 }
 
 .scale li button:hover {
-  background: rgba(240, 179, 94, 0.09);
+  background: rgba(127, 216, 255, 0.09);
   color: var(--fg);
 }
 
 .scale li button[aria-current="true"] {
   color: var(--accent);
-  background: rgba(240, 179, 94, 0.1);
+  background: rgba(127, 216, 255, 0.1);
 }
 
 .scale li b {
@@ -503,9 +504,9 @@ select:focus-visible {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.55;
-  color: #c9b48a;
+  color: #c4b8f2;
   padding-left: 10px;
-  border-left: 2px solid rgba(240, 179, 94, 0.45);
+  border-left: 2px solid rgba(182, 156, 255, 0.5);
 }
 
 .go-row {
@@ -517,7 +518,7 @@ select:focus-visible {
 
 .go {
   background: none;
-  border: 1px solid rgba(240, 179, 94, 0.5);
+  border: 1px solid rgba(127, 216, 255, 0.5);
   color: var(--accent);
   border-radius: 4px;
   padding: 6px 12px;
@@ -526,7 +527,7 @@ select:focus-visible {
 }
 
 .go:hover {
-  background: rgba(240, 179, 94, 0.12);
+  background: rgba(127, 216, 255, 0.12);
 }
 
 .toast {
@@ -605,7 +606,7 @@ select:focus-visible {
   align-items: center;
   gap: 7px;
   background: var(--accent);
-  color: #1a1208;
+  color: #04121c;
   border: 0;
   border-radius: 4px;
   padding: 8px 14px;
@@ -663,7 +664,7 @@ select:focus-visible {
 }
 
 .seg button[aria-pressed="true"] {
-  background: rgba(240, 179, 94, 0.16);
+  background: rgba(127, 216, 255, 0.16);
   color: var(--accent);
 }
 
@@ -771,12 +772,12 @@ select:focus-visible {
 
 #slider::-webkit-slider-runnable-track {
   height: 2px;
-  background: rgba(222, 204, 168, 0.25);
+  background: rgba(150, 170, 255, 0.25);
 }
 
 #slider::-moz-range-track {
   height: 2px;
-  background: rgba(222, 204, 168, 0.25);
+  background: rgba(150, 170, 255, 0.25);
 }
 
 #slider::-webkit-slider-thumb {
@@ -786,7 +787,7 @@ select:focus-visible {
   margin-top: -6px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid #1a1208;
+  border: 2px solid #04121c;
   box-shadow: 0 0 0 1px var(--accent);
 }
 
@@ -795,7 +796,7 @@ select:focus-visible {
   height: 12px;
   border-radius: 50%;
   background: var(--accent);
-  border: 2px solid #1a1208;
+  border: 2px solid #04121c;
 }
 
 .ticks {
@@ -832,7 +833,7 @@ select:focus-visible {
   z-index: 5;
   max-width: 280px;
   padding: 7px 10px;
-  background: rgba(9, 12, 20, 0.96);
+  background: rgba(10, 13, 34, 0.96);
   border: 1px solid var(--line);
   border-radius: 5px;
   font-size: 12.5px;
@@ -852,7 +853,7 @@ select:focus-visible {
   bottom: calc(var(--tl-h, 120px) + 20px + var(--bottom));
   margin: 0;
   font-size: 10px;
-  color: rgba(155, 149, 132, 0.7);
+  color: rgba(138, 147, 184, 0.7);
   text-align: right;
   max-width: 50%;
   pointer-events: none;
@@ -957,7 +958,7 @@ select:focus-visible {
 }
 
 .scale .chase[aria-pressed="true"] {
-  border-color: rgba(240, 179, 94, 0.5);
+  border-color: rgba(127, 216, 255, 0.5);
   color: var(--accent);
-  background: rgba(240, 179, 94, 0.12);
+  background: rgba(127, 216, 255, 0.12);
 }
