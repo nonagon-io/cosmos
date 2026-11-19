@@ -1,0 +1,800 @@
+# Radii are equatorial, in km. `rotation` is the sidereal day in hours, negative for retrograde spin.
+# `period` is the sidereal orbital period in days; for `named` bodies it comes from their elements.
+# `orbit` says where the position comes from:
+#   engine   astronomy-engine (VSOP87 for planets, its own models for the Moon and Pluto)
+#   jupiter  astronomy-engine's Galilean moon model (L1.2)
+#   moon     osculating elements from JPL Horizons, public/data/moons.json
+#   named    orbital elements from the JPL Small-Body Database, public/data/named.json
+#   craft    JPL Horizons trajectory, public/data/spacecraft.json
+# `illustrated` marks an artist's texture, not one made from images; the app labels it as such.
+
+- id: sun
+  name: ดวงอาทิตย์
+  en: Sun
+  kind: star
+  orbit: engine
+  radius: 695700
+  mass: 1.989e30
+  rotation: 609.12
+  texture: sun
+  color: '#ffd27a'
+  desc: ดาวฤกษ์ประเภท G อายุราว 4,600 ล้านปี มีมวลถึง 99.86% ของมวลทั้งระบบสุริยะ แรงโน้มถ่วงของมันยึดวัตถุไว้ไกลถึงขอบเมฆออร์ต
+
+- id: mercury
+  name: ดาวพุธ
+  en: Mercury
+  kind: planet
+  orbit: engine
+  period: 87.969
+  radius: 2440.5
+  mass: 3.301e23
+  rotation: 1407.6
+  texture: mercury
+  color: '#a8a39b'
+  desc: ดาวเคราะห์ที่เล็กที่สุดและใกล้ดวงอาทิตย์ที่สุด หมุนรอบตัวเอง 3 รอบทุก 2 รอบที่โคจร กลางวันร้อนถึง 430 °C กลางคืนเย็นถึง −180 °C
+
+- id: venus
+  name: ดาวศุกร์
+  en: Venus
+  kind: planet
+  orbit: engine
+  period: 224.701
+  radius: 6051.8
+  mass: 4.867e24
+  rotation: -5832.5
+  texture: venus_atmosphere
+  color: '#e8cf9a'
+  desc: ขนาดใกล้เคียงโลกแต่มีบรรยากาศคาร์บอนไดออกไซด์หนาจนความดันพื้นผิวสูงกว่าโลก 92 เท่า ร้อนที่สุดในระบบสุริยะ และหมุนรอบตัวเองกลับทิศกับดาวเคราะห์ส่วนใหญ่
+
+- id: earth
+  name: โลก
+  en: Earth
+  kind: planet
+  orbit: engine
+  period: 365.256
+  radius: 6378.137
+  flattening: 0.003353
+  mass: 5.972e24
+  rotation: 23.9345
+  texture: earth_daymap
+  color: '#6fa8ff'
+  desc: ดาวเคราะห์ดวงเดียวที่รู้ว่ามีสิ่งมีชีวิต แสงจากดวงอาทิตย์ใช้เวลาราว 8 นาที 20 วินาทีเดินทางมาถึง
+
+- id: moon
+  name: ดวงจันทร์
+  en: Moon
+  kind: moon
+  parent: earth
+  orbit: engine
+  period: 27.321661
+  radius: 1737.4
+  mass: 7.346e22
+  rotation: 655.72
+  texture: moon
+  color: '#cfcac0'
+  desc: บริวารเพียงดวงเดียวของโลก หมุนรอบตัวเองพอดีกับรอบที่โคจรจึงหันด้านเดียวเข้าหาโลกเสมอ และกำลังถอยห่างออกไปปีละราว 3.8 ซม.
+
+- id: mars
+  name: ดาวอังคาร
+  en: Mars
+  kind: planet
+  orbit: engine
+  period: 686.98
+  radius: 3396.2
+  flattening: 0.00589
+  mass: 6.417e23
+  rotation: 24.6229
+  texture: mars
+  color: '#e07a4f'
+  desc: ดาวเคราะห์หินสีแดงจากฝุ่นเหล็กออกไซด์ มีภูเขาไฟโอลิมปัสสูงราว 22 กม. ซึ่งสูงที่สุดในระบบสุริยะ
+
+- id: phobos
+  name: โฟบอส
+  en: Phobos
+  kind: moon
+  parent: mars
+  orbit: moon
+  period: 0.31891
+  radius: 11.1
+  rotation: 7.654
+  color: '#9b8f84'
+  desc: ดวงจันทร์ใหญ่ของดาวอังคาร โคจรต่ำมากจนเร็วกว่าการหมุนของดาวอังคาร และกำลังเข้าใกล้ราว 2 ม. ทุกร้อยปี
+
+- id: deimos
+  name: ไดมอส
+  en: Deimos
+  kind: moon
+  parent: mars
+  orbit: moon
+  period: 1.26244
+  radius: 6.2
+  rotation: 30.3
+  color: '#a89d90'
+  desc: ดวงจันทร์ดวงเล็กของดาวอังคาร น่าจะเป็นดาวเคราะห์น้อยที่ถูกจับไว้ หรือเศษจากการชนครั้งใหญ่
+
+- id: jupiter
+  name: ดาวพฤหัสบดี
+  en: Jupiter
+  kind: planet
+  orbit: engine
+  period: 4332.59
+  radius: 71492
+  flattening: 0.06487
+  mass: 1.898e27
+  rotation: 9.925
+  texture: jupiter
+  color: '#d9b38c'
+  moons: 97
+  desc: ดาวเคราะห์ที่ใหญ่ที่สุด มวลมากกว่าดาวเคราะห์ดวงอื่นรวมกันสองเท่าครึ่ง จุดแดงใหญ่เป็นพายุที่กว้างกว่าโลก
+
+- id: io
+  name: ไอโอ
+  en: Io
+  kind: moon
+  parent: jupiter
+  orbit: jupiter
+  period: 1.769138
+  radius: 1821.6
+  rotation: 42.46
+  color: '#e8d36a'
+  desc: วัตถุที่มีภูเขาไฟคุกรุ่นมากที่สุดในระบบสุริยะ ความร้อนมาจากแรงไทดัลของดาวพฤหัสบดี
+
+- id: europa
+  name: ยูโรปา
+  en: Europa
+  kind: moon
+  parent: jupiter
+  orbit: jupiter
+  period: 3.551181
+  radius: 1560.8
+  rotation: 85.23
+  color: '#d8cbb4'
+  desc: มีมหาสมุทรน้ำเค็มใต้เปลือกน้ำแข็ง เป็นหนึ่งในที่ที่น่าจะมีสิ่งมีชีวิตมากที่สุดนอกโลก
+
+- id: ganymede
+  name: แกนีมีด
+  en: Ganymede
+  kind: moon
+  parent: jupiter
+  orbit: jupiter
+  period: 7.154553
+  radius: 2634.1
+  rotation: 171.71
+  color: '#a99d8e'
+  desc: ดวงจันทร์ที่ใหญ่ที่สุดในระบบสุริยะ ใหญ่กว่าดาวพุธ และเป็นดวงจันทร์ดวงเดียวที่มีสนามแม่เหล็กของตัวเอง
+
+- id: callisto
+  name: คัลลิสโต
+  en: Callisto
+  kind: moon
+  parent: jupiter
+  orbit: jupiter
+  period: 16.689018
+  radius: 2410.3
+  rotation: 400.54
+  color: '#7f7468'
+  desc: พื้นผิวเก่าแก่ที่สุดดวงหนึ่ง เต็มไปด้วยหลุมอุกกาบาตซ้อนกันจนแทบไม่มีที่ว่าง
+
+- id: saturn
+  name: ดาวเสาร์
+  en: Saturn
+  kind: planet
+  orbit: engine
+  period: 10759.22
+  radius: 60268
+  flattening: 0.09796
+  mass: 5.683e26
+  rotation: 10.656
+  texture: saturn
+  color: '#e8d4a2'
+  moons: 274
+  rings: { inner: 74500, outer: 140220, texture: saturn_ring_alpha }
+  desc: วงแหวนกว้างกว่า 280,000 กม. แต่หนาเพียงราว 10 เมตรถึง 1 กม. ทำจากน้ำแข็งและหิน ความหนาแน่นเฉลี่ยต่ำกว่าน้ำ
+
+- id: mimas
+  name: ไมมัส
+  en: Mimas
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 0.942422
+  radius: 198.2
+  rotation: 22.62
+  color: '#bdb8b0'
+  desc: หลุมเฮอร์เชลกว้างหนึ่งในสามของตัวดวงจันทร์ ทำให้ดูคล้ายดาวมรณะในภาพยนตร์
+
+- id: enceladus
+  name: เอนเซลาดัส
+  en: Enceladus
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 1.370218
+  radius: 252.1
+  rotation: 32.89
+  color: '#f2f4f6'
+  desc: พ่นไอน้ำและน้ำแข็งออกมาจากรอยแยกที่ขั้วใต้ จากมหาสมุทรใต้ผิว และเป็นต้นทางของวงแหวน E
+
+- id: tethys
+  name: ทีทิส
+  en: Tethys
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 1.887802
+  radius: 531.1
+  rotation: 45.31
+  color: '#d9d6cf'
+  desc: แทบทั้งดวงเป็นน้ำแข็ง มีหุบเขาอิทากาคัสมายาวเกือบสามในสี่รอบดวง
+
+- id: dione
+  name: ไดโอนี
+  en: Dione
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 2.736915
+  radius: 561.4
+  rotation: 65.69
+  color: '#cfcbc4'
+  desc: ด้านหลังของวงโคจรมีหน้าผาน้ำแข็งสว่างเป็นริ้วยาว
+
+- id: rhea
+  name: รีอา
+  en: Rhea
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 4.518212
+  radius: 763.5
+  rotation: 108.44
+  color: '#c8c3ba'
+  desc: ดวงจันทร์ใหญ่อันดับสองของดาวเสาร์ เป็นก้อนน้ำแข็งปนหินที่เย็นจัด
+
+- id: titan
+  name: ไททัน
+  en: Titan
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 15.945421
+  radius: 2574.7
+  rotation: 382.69
+  color: '#e0b25c'
+  desc: ดวงจันทร์ดวงเดียวที่มีบรรยากาศหนา มีทะเลสาบมีเทนและอีเทนเหลว ยานฮอยเกนส์ลงจอดบนพื้นผิวในปี 2005
+
+- id: hyperion
+  name: ไฮเปอเรียน
+  en: Hyperion
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 21.276609
+  radius: 135
+  rotation: 0
+  color: '#b5a48e'
+  desc: รูปร่างไม่กลม เนื้อพรุนคล้ายฟองน้ำ และหมุนแบบสับสนจนทำนายทิศได้ยาก
+
+- id: iapetus
+  name: ไอแอพิทัส
+  en: Iapetus
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 79.330183
+  radius: 734.5
+  rotation: 1903.94
+  color: '#a3988a'
+  desc: ซีกหนึ่งดำเหมือนถ่าน อีกซีกขาวเหมือนหิมะ และมีสันเขาตามแนวเส้นศูนย์สูตร
+
+- id: phoebe
+  name: ฟีบี
+  en: Phoebe
+  kind: moon
+  parent: saturn
+  orbit: moon
+  period: 548.02
+  radius: 106.5
+  rotation: 9.27
+  color: '#6e655c'
+  desc: โคจรไกลและสวนทาง น่าจะเป็นวัตถุจากแถบไคเปอร์ที่ดาวเสาร์จับไว้
+
+- id: uranus
+  name: ดาวยูเรนัส
+  en: Uranus
+  kind: planet
+  orbit: engine
+  period: 30685.4
+  radius: 25559
+  flattening: 0.02293
+  mass: 8.681e25
+  rotation: -17.24
+  texture: uranus
+  color: '#9fe3e8'
+  moons: 29
+  desc: แกนเอียงถึง 98° จึงกลิ้งไปตามวงโคจร ขั้วแต่ละข้างได้รับแสงอาทิตย์ต่อเนื่อง 42 ปีแล้วมืดอีก 42 ปี
+
+- id: miranda
+  name: มิแรนดา
+  en: Miranda
+  kind: moon
+  parent: uranus
+  orbit: moon
+  period: 1.413479
+  radius: 235.8
+  rotation: 33.92
+  color: '#bdbab4'
+  desc: มีหน้าผาเวโรนาสูงราว 20 กม. ซึ่งน่าจะสูงที่สุดในระบบสุริยะ
+
+- id: ariel
+  name: แอเรียล
+  en: Ariel
+  kind: moon
+  parent: uranus
+  orbit: moon
+  period: 2.520379
+  radius: 578.9
+  rotation: 60.49
+  color: '#c9c5bf'
+  desc: พื้นผิวสว่างและอายุน้อยที่สุดในบรรดาดวงจันทร์ใหญ่ของดาวยูเรนัส
+
+- id: umbriel
+  name: อัมเบรียล
+  en: Umbriel
+  kind: moon
+  parent: uranus
+  orbit: moon
+  period: 4.144177
+  radius: 584.7
+  rotation: 99.46
+  color: '#77736e'
+  desc: มืดที่สุดในบรรดาดวงจันทร์ใหญ่ของดาวยูเรนัส
+
+- id: titania
+  name: ไททาเนีย
+  en: Titania
+  kind: moon
+  parent: uranus
+  orbit: moon
+  period: 8.705872
+  radius: 788.9
+  rotation: 208.94
+  color: '#b9b2a8'
+  desc: ดวงจันทร์ที่ใหญ่ที่สุดของดาวยูเรนัส
+
+- id: oberon
+  name: โอเบอรอน
+  en: Oberon
+  kind: moon
+  parent: uranus
+  orbit: moon
+  period: 13.463239
+  radius: 761.4
+  rotation: 323.12
+  color: '#a99f95'
+  desc: ดวงจันทร์ใหญ่ที่อยู่ไกลที่สุดของดาวยูเรนัส
+
+- id: neptune
+  name: ดาวเนปจูน
+  en: Neptune
+  kind: planet
+  orbit: engine
+  period: 60189
+  radius: 24764
+  flattening: 0.01708
+  mass: 1.024e26
+  rotation: 16.11
+  texture: neptune
+  color: '#5b7cff'
+  moons: 16
+  desc: ดาวเคราะห์ดวงแรกที่พบจากการคำนวณก่อนส่องเห็น (1846) ลมแรงที่สุดในระบบสุริยะถึง 2,100 กม./ชม.
+
+- id: triton
+  name: ไทรทัน
+  en: Triton
+  kind: moon
+  parent: neptune
+  orbit: moon
+  period: 5.876854
+  radius: 1353.4
+  rotation: 141.04
+  color: '#d6c6bf'
+  desc: โคจรสวนทางการหมุนของดาวเนปจูน จึงน่าจะเป็นวัตถุแถบไคเปอร์ที่ถูกจับไว้ มีน้ำพุไนโตรเจน
+
+- id: nereid
+  name: เนรีด
+  en: Nereid
+  kind: moon
+  parent: neptune
+  orbit: moon
+  period: 360.13
+  radius: 170
+  rotation: 11.6
+  color: '#9d968e'
+  desc: วงโคจรรีมากที่สุดดวงหนึ่ง ระยะห่างจากดาวเนปจูนต่างกันถึงเจ็ดเท่า
+
+- id: pluto
+  name: ดาวพลูโต
+  en: Pluto
+  kind: dwarf
+  orbit: engine
+  period: 90560
+  radius: 1188.3
+  mass: 1.303e22
+  rotation: -153.29
+  # New Horizons color mosaic, centred on longitude 180; most of the south was in polar night in 2015
+  texture: pluto_newhorizons
+  textureCenter: 180
+  unmapped: '#8d796c'
+  color: '#d9b99b'
+  moons: 5
+  desc: ดาวเคราะห์แคระในแถบไคเปอร์ ยานนิวฮอไรซันส์บินผ่านในปี 2015 และพบที่ราบน้ำแข็งไนโตรเจนรูปหัวใจ
+
+- id: charon
+  name: แครอน
+  en: Charon
+  kind: moon
+  parent: pluto
+  orbit: moon
+  period: 6.387221
+  radius: 606
+  mass: 1.586e21
+  rotation: 153.29
+  color: '#a69c95'
+  desc: ใหญ่ราวครึ่งหนึ่งของพลูโต ทั้งสองต่างหันด้านเดียวเข้าหากัน
+
+- id: ceres
+  name: ซีรีส
+  en: Ceres
+  kind: dwarf
+  orbit: named
+  radius: 469.7
+  rotation: 9.074
+  texture: ceres_fictional
+  illustrated: true
+  color: '#b0aca5'
+  desc: วัตถุใหญ่ที่สุดในแถบดาวเคราะห์น้อย และเป็นดาวเคราะห์แคระดวงเดียวในระบบสุริยะชั้นใน
+
+- id: vesta
+  name: เวสตา
+  en: Vesta
+  kind: asteroid
+  orbit: named
+  radius: 262.7
+  rotation: 5.342
+  color: '#c4bba8'
+  desc: ดาวเคราะห์น้อยที่สว่างที่สุด บางครั้งเห็นได้ด้วยตาเปล่า อุกกาบาตหลายก้อนบนโลกมาจากที่นี่
+
+- id: pallas
+  name: พัลลัส
+  en: Pallas
+  kind: asteroid
+  orbit: named
+  radius: 256
+  rotation: 7.813
+  color: '#a9a49c'
+  desc: ดาวเคราะห์น้อยดวงใหญ่ที่โคจรเอียงถึง 35° จากระนาบแถบหลัก
+
+- id: eros
+  name: อีรอส
+  en: Eros
+  kind: asteroid
+  orbit: named
+  radius: 8.4
+  rotation: 5.27
+  color: '#b59b7c'
+  desc: ดาวเคราะห์น้อยใกล้โลกดวงแรกที่ยานอวกาศ (NEAR Shoemaker) ลงจอด ในปี 2001
+
+- id: apophis
+  name: อะโพฟิส
+  en: Apophis
+  kind: asteroid
+  orbit: named
+  radius: 0.17
+  rotation: 30.56
+  color: '#b8a088'
+  desc: จะผ่านใกล้โลกในวันที่ 13 เมษายน 2029 ต่ำกว่าวงโคจรดาวเทียมค้างฟ้า และเห็นได้ด้วยตาเปล่า
+
+- id: bennu
+  name: เบนนู
+  en: Bennu
+  kind: asteroid
+  orbit: named
+  radius: 0.245
+  rotation: 4.296
+  color: '#5f5a55'
+  desc: ยาน OSIRIS-REx เก็บตัวอย่างหินกลับมาถึงโลกในปี 2023
+
+- id: eris
+  name: อีรีส
+  en: Eris
+  kind: dwarf
+  orbit: named
+  radius: 1163
+  rotation: 378.9
+  texture: eris_fictional
+  illustrated: true
+  color: '#e9e6e1'
+  desc: มวลมากกว่าพลูโตเล็กน้อย การค้นพบในปี 2005 ทำให้ IAU ต้องนิยามคำว่าดาวเคราะห์ใหม่
+
+- id: haumea
+  name: เฮาเมอา
+  en: Haumea
+  kind: dwarf
+  orbit: named
+  radius: 780
+  rotation: 3.915
+  texture: haumea_fictional
+  illustrated: true
+  color: '#dcd7cf'
+  desc: หมุนรอบตัวเองทุก 4 ชั่วโมงจนรูปร่างยืดเป็นรีคล้ายลูกรักบี้ และมีวงแหวน
+
+- id: makemake
+  name: มาคีมาคี
+  en: Makemake
+  kind: dwarf
+  orbit: named
+  radius: 715
+  rotation: 22.83
+  texture: makemake_fictional
+  illustrated: true
+  color: '#d4a28a'
+  desc: ดาวเคราะห์แคระสีน้ำตาลแดงในแถบไคเปอร์ ผิวมีมีเทนแข็ง
+
+- id: gonggong
+  name: กงกง
+  en: Gonggong
+  kind: dwarf
+  orbit: named
+  radius: 615
+  rotation: 22.4
+  color: '#c07d64'
+  desc: วัตถุทรานส์เนปจูนสีแดง โคจรรีและเอียง ห่างดวงอาทิตย์ระหว่าง 33 ถึง 101 AU
+
+- id: quaoar
+  name: ควาอัวร์
+  en: Quaoar
+  kind: dwarf
+  orbit: named
+  radius: 545
+  rotation: 17.68
+  color: '#b88a70'
+  desc: มีวงแหวนอยู่ไกลเกินกว่าขีดจำกัดโรช ซึ่งทฤษฎีบอกว่าน่าจะรวมตัวเป็นดวงจันทร์ไปแล้ว
+
+- id: orcus
+  name: ออร์คัส
+  en: Orcus
+  kind: dwarf
+  orbit: named
+  radius: 455
+  rotation: 10.47
+  color: '#9ea3a8'
+  desc: วงโคจรคล้ายพลูโตแต่อยู่ฝั่งตรงข้ามเสมอ จึงมีฉายาว่า "แอนติ-พลูโต"
+
+- id: sedna
+  name: เซดนา
+  en: Sedna
+  kind: dwarf
+  orbit: named
+  radius: 500
+  rotation: 10.27
+  color: '#c2594a'
+  desc: วงโคจรยาวราว 11,000 ปี จุดไกลสุดเกือบ 1,000 AU ไม่เคยเข้าใกล้ดาวเนปจูนเลย จึงอาจเป็นวัตถุชิ้นแรกของเมฆออร์ตชั้นใน
+
+- id: vp113
+  name: 2012 VP113
+  en: 2012 VP113
+  kind: dwarf
+  orbit: named
+  radius: 225
+  rotation: 0
+  color: '#c9806c'
+  desc: วัตถุแบบเซดนาดวงที่สอง จุดใกล้สุด 80 AU ซึ่งไกลกว่าดาวเนปจูนเกือบสามเท่า
+
+- id: leleakuhonua
+  name: เลเลอาคูโฮนัว
+  en: Leleākūhonua
+  kind: asteroid
+  orbit: named
+  radius: 110
+  rotation: 0
+  color: '#c48d74'
+  desc: วงโคจรยาวกว่า 30,000 ปี ห่างไปได้ถึงราว 2,000 AU ช่วยให้นักดาราศาสตร์ตามหาดาวเคราะห์ดวงที่เก้าที่ยังเป็นสมมติฐาน
+
+- id: farfarout
+  name: ฟาร์ฟาร์เอาต์
+  en: Farfarout
+  kind: asteroid
+  orbit: named
+  radius: 200
+  rotation: 0
+  color: '#b98a78'
+  desc: วัตถุที่ไกลที่สุดเท่าที่เคยสังเกตในระบบสุริยะ ตอนค้นพบอยู่ห่าง 132 AU
+
+- id: arrokoth
+  name: อาร์โรคอท
+  en: Arrokoth
+  kind: asteroid
+  orbit: named
+  radius: 18
+  rotation: 15.92
+  color: '#b0644c'
+  desc: ก้อนสองก้อนเชื่อมกันคล้ายตุ๊กตาหิมะ เป็นวัตถุที่ไกลที่สุดที่ยานอวกาศเคยบินผ่าน (นิวฮอไรซันส์ 2019)
+
+- id: halley
+  name: ดาวหางฮัลเลย์
+  en: Halley's Comet
+  kind: comet
+  orbit: named
+  radius: 5.5
+  rotation: 52.8
+  tail: { ion: 0.25, dust: 0.1 }
+  color: '#bfe4ff'
+  desc: ดาวหางคาบสั้นที่ดังที่สุด กลับมาทุก 75–79 ปี ครั้งล่าสุดปี 1986 ครั้งหน้าราวกรกฎาคม 2061
+
+- id: encke
+  name: ดาวหางเองเคอ
+  en: Comet Encke
+  kind: comet
+  orbit: named
+  radius: 2.4
+  rotation: 11
+  tail: { ion: 0.03, dust: 0.01 }
+  color: '#bfe4ff'
+  desc: คาบสั้นที่สุดในบรรดาดาวหางที่เห็นได้ คือ 3.3 ปี และเป็นต้นทางของฝนดาวตกทอริดส์
+
+- id: churyumov-gerasimenko
+  name: ดาวหาง 67P
+  en: 67P/Churyumov–Gerasimenko
+  kind: comet
+  orbit: named
+  radius: 2
+  rotation: 12.4
+  tail: { ion: 0.005, dust: 0.005 }
+  color: '#bfe4ff'
+  desc: ยานโรเซตตาโคจรรอบและส่งยานฟิเลลงจอดในปี 2014 เป็นครั้งแรกที่ยานลงบนดาวหาง
+
+- id: hale-bopp
+  name: ดาวหางเฮล–บอปป์
+  en: Comet Hale–Bopp
+  kind: comet
+  orbit: named
+  radius: 30
+  rotation: 11.3
+  tail: { ion: 0.7, dust: 0.4, onset: 7 }
+  color: '#bfe4ff'
+  desc: ดาวหางใหญ่ปี 1997 เห็นได้ด้วยตาเปล่านานถึง 18 เดือน วงโคจรราว 2,400 ปี
+
+- id: hyakutake
+  name: ดาวหางเฮียะกุตะเกะ
+  en: Comet Hyakutake
+  kind: comet
+  orbit: named
+  radius: 2.1
+  rotation: 6.3
+  tail: { ion: 3.8, dust: 0.12 }
+  color: '#bfe4ff'
+  desc: ผ่านใกล้โลกในปี 1996 หางยาวที่สุดเท่าที่วัดได้ ยาวกว่า 3.8 AU
+
+- id: neowise
+  name: ดาวหางนีโอไวส์
+  en: Comet NEOWISE
+  kind: comet
+  orbit: named
+  radius: 2.5
+  rotation: 7.6
+  tail: { ion: 0.15, dust: 0.1 }
+  color: '#bfe4ff'
+  desc: ดาวหางสว่างกลางปี 2020 จะกลับมาอีกในราว 6,700 ปี
+
+- id: tsuchinshan-atlas
+  name: ดาวหางจื่อจินซาน–แอตลัส
+  en: Comet Tsuchinshan–ATLAS
+  kind: comet
+  orbit: named
+  radius: 2.5
+  rotation: 0
+  tail: { ion: 0.2, dust: 0.25 }
+  color: '#bfe4ff'
+  desc: ดาวหางสว่างเดือนตุลาคม 2024 มาจากเมฆออร์ต
+
+- id: bernardinelli-bernstein
+  name: ดาวหางเบอร์นาร์ดิเนลลี–เบิร์นสไตน์
+  en: Comet Bernardinelli–Bernstein
+  kind: comet
+  orbit: named
+  radius: 60
+  rotation: 0
+  tail: { ion: 0, dust: 0.01, onset: 25 }
+  color: '#bfe4ff'
+  desc: นิวเคลียสใหญ่ที่สุดเท่าที่รู้จัก กว้างราว 120 กม. กำลังเดินทางจากเมฆออร์ตเข้ามาถึงจุดใกล้สุดในปี 2031 ใกล้วงโคจรดาวเสาร์
+
+- id: oumuamua
+  name: โอมูอามูอา
+  en: ʻOumuamua
+  kind: interstellar
+  orbit: named
+  # Mashchenko (2019), MNRAS 489, 3003: the oblate model that best fits the light curve
+  shape: { axes: [0.0575, 0.0555, 0.0095], tumble: 54.5 }
+  rotation: 8.67
+  color: '#c9a48f'
+  desc: >-
+    วัตถุจากระบบดาวอื่นชิ้นแรกที่มีคนพบ (19 ต.ค. 2017) ตอนพบมันผ่านจุดใกล้ดวงอาทิตย์ไปแล้วและกำลังออกจากระบบสุริยะ
+    วงโคจรเป็นไฮเพอร์โบลา จึงผ่านมาครั้งเดียวแล้วไม่กลับมาอีก
+
+    ไม่เคยมีกล้องไหนเห็นรูปร่างของมัน ทุกกล้องเห็นเป็นแค่จุดแสงจุดเดียว
+    สิ่งที่วัดได้คือความสว่างที่ขึ้นลงราว 10 เท่าทุกไม่กี่ชั่วโมง แปลว่ามันหมุนควงไปมา (ไม่ได้หมุนรอบแกนเดียว)
+    และด้านหนึ่งยาวกว่าอีกด้านหลายเท่า
+    รูปร่างในแอปนี้เป็นภาพจำลองทรงจานแบนขนาดราว 115 × 111 × 19 เมตร
+    ซึ่งงานวิเคราะห์ของ Mashchenko (2019) พบว่าเข้ากับข้อมูลความสว่างได้ดีที่สุด
+    อีกแบบที่ยังเป็นไปได้คือทรงซิการ์ยาวราว 6 เท่าของความกว้าง ซึ่งเป็นแบบที่ใช้ในภาพวาดของศิลปินที่เห็นตามข่าว
+
+    นอกจากนี้มันยังถูกผลักออกจากดวงอาทิตย์แรงกว่าที่แรงโน้มถ่วงอย่างเดียวจะอธิบายได้ โดยไม่มีหางหรือก๊าซให้เห็น
+    สาเหตุของเรื่องนี้ยังไม่มีข้อสรุป
+
+- id: borisov
+  name: ดาวหางบอริซอฟ
+  en: 2I/Borisov
+  kind: interstellar
+  orbit: named
+  radius: 0.5
+  rotation: 0
+  tail: { ion: 0, dust: 0.001, onset: 8 }
+  color: '#e7b9a0'
+  desc: ดาวหางจากนอกระบบสุริยะดวงแรก พบโดยนักดาราศาสตร์สมัครเล่นในปี 2019
+
+- id: atlas3i
+  name: 3I/ATLAS
+  en: 3I/ATLAS
+  kind: interstellar
+  orbit: named
+  radius: 1
+  rotation: 0
+  tail: { ion: 0.01, dust: 0.01, onset: 6 }
+  color: '#e7b9a0'
+  desc: วัตถุจากนอกระบบสุริยะดวงที่สาม พบในเดือนกรกฎาคม 2025 วิ่งเร็วกว่า 58 กม./วินาที อาจเก่าแก่กว่าระบบสุริยะ
+
+- id: pioneer-10
+  name: ไพโอเนียร์ 10
+  en: Pioneer 10
+  kind: spacecraft
+  orbit: craft
+  launch: '1972-03-03'
+  color: '#9ef0c0'
+  desc: ยานลำแรกที่ข้ามแถบดาวเคราะห์น้อยและบินผ่านดาวพฤหัสบดี (1973) ติดแผ่นโลหะสลักข้อความถึงผู้ที่อาจพบ ติดต่อได้ครั้งสุดท้ายปี 2003
+
+- id: pioneer-11
+  name: ไพโอเนียร์ 11
+  en: Pioneer 11
+  kind: spacecraft
+  orbit: craft
+  launch: '1973-04-06'
+  color: '#9ef0c0'
+  desc: ยานลำแรกที่บินผ่านดาวเสาร์ (1979) ติดต่อได้ครั้งสุดท้ายปี 1995
+
+- id: voyager-1
+  name: วอยเอเจอร์ 1
+  en: Voyager 1
+  kind: spacecraft
+  orbit: craft
+  launch: '1977-09-05'
+  color: '#9ef0c0'
+  desc: วัตถุฝีมือมนุษย์ที่ไกลที่สุด ออกพ้นเฮลิโอพอสสู่อวกาศระหว่างดาวในปี 2012 และยังส่งสัญญาณกลับมา
+
+- id: voyager-2
+  name: วอยเอเจอร์ 2
+  en: Voyager 2
+  kind: spacecraft
+  orbit: craft
+  launch: '1977-08-20'
+  color: '#9ef0c0'
+  desc: ยานลำเดียวที่บินผ่านดาวยูเรนัส (1986) และดาวเนปจูน (1989) พ้นเฮลิโอพอสในปี 2018
+
+- id: new-horizons
+  name: นิวฮอไรซันส์
+  en: New Horizons
+  kind: spacecraft
+  orbit: craft
+  launch: '2006-01-19'
+  color: '#9ef0c0'
+  desc: บินผ่านดาวพลูโตในปี 2015 และอาร์โรคอทในปี 2019 กำลังมุ่งออกจากระบบสุริยะ

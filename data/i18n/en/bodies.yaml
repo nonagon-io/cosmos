@@ -1,0 +1,80 @@
+sun: { desc: A G-type star about 4.6 billion years old, holding 99.86% of the Solar System's mass. Its gravity holds on to bodies out to the edge of the Oort cloud. }
+mercury: { desc: The smallest planet and the closest to the Sun. It spins three times for every two orbits; days reach 430 °C and nights −180 °C. }
+venus: { desc: Nearly Earth's size, but under a carbon dioxide atmosphere with 92 times Earth's surface pressure. The hottest planet, and it spins backwards compared with most others. }
+earth: { desc: The only planet known to host life. Sunlight takes about 8 minutes 20 seconds to get here. }
+moon: { desc: Earth's only natural satellite. It turns once per orbit, so the same side always faces us, and it drifts about 3.8 cm farther away each year. }
+mars: { desc: A rocky planet reddened by iron oxide dust. Olympus Mons, about 22 km high, is the tallest volcano in the Solar System. }
+phobos: { desc: The larger moon of Mars. It orbits faster than Mars spins and is sinking about 2 m closer every century. }
+deimos: { desc: The smaller moon of Mars, probably a captured asteroid or debris from a large impact. }
+jupiter: { desc: The largest planet, two and a half times the mass of all the others combined. The Great Red Spot is a storm wider than Earth. }
+io: { desc: The most volcanically active body in the Solar System, heated by Jupiter's tides. }
+europa: { desc: A salty ocean lies under its ice shell, making it one of the most promising places to look for life beyond Earth. }
+ganymede: { desc: The largest moon in the Solar System, bigger than Mercury, and the only moon with its own magnetic field. }
+callisto: { desc: One of the oldest surfaces known, saturated with overlapping craters. }
+saturn: { desc: Its rings span more than 280,000 km but are only 10 m to 1 km thick, made of ice and rock. Its average density is lower than water's. }
+mimas: { desc: Herschel crater is a third of the moon's width, which gives it its Death Star look. }
+enceladus: { desc: Jets of water vapour and ice spray from cracks at its south pole, fed by a subsurface ocean and feeding Saturn's E ring. }
+tethys: { desc: Almost entirely water ice, with the Ithaca Chasma canyon running three quarters of the way around it. }
+dione: { desc: Its trailing side is streaked with bright ice cliffs. }
+rhea: { desc: Saturn's second largest moon, a frigid mix of ice and rock. }
+titan: { desc: The only moon with a thick atmosphere, and lakes of liquid methane and ethane. The Huygens probe landed on it in 2005. }
+hyperion: { desc: Irregular, porous like a sponge, and tumbling chaotically so its spin can't be predicted. }
+iapetus: { desc: One hemisphere is dark as coal, the other bright as snow, and a ridge runs along its equator. }
+phoebe: { desc: Orbits far out and backwards, likely a Kuiper belt object captured by Saturn. }
+uranus: { desc: Tilted 98°, it rolls along its orbit. Each pole gets 42 years of sunlight followed by 42 years of darkness. }
+miranda: { desc: Verona Rupes, a cliff about 20 km high, may be the tallest in the Solar System. }
+ariel: { desc: The brightest and youngest surface among Uranus's large moons. }
+umbriel: { desc: The darkest of Uranus's large moons. }
+titania: { desc: The largest moon of Uranus. }
+oberon: { desc: The outermost of Uranus's large moons. }
+neptune: { desc: The first planet found by calculation before it was seen (1846). It has the fastest winds in the Solar System, up to 2,100 km/h. }
+triton: { desc: Orbits against Neptune's spin, so it was probably captured from the Kuiper belt. It has nitrogen geysers. }
+nereid: { desc: One of the most eccentric orbits of any moon; its distance from Neptune varies sevenfold. }
+pluto: { desc: A dwarf planet in the Kuiper belt. New Horizons flew past in 2015 and found a heart-shaped plain of nitrogen ice. }
+charon: { desc: About half Pluto's size. The two keep the same faces turned to each other. }
+ceres: { desc: The largest body in the asteroid belt and the only dwarf planet in the inner Solar System. }
+vesta: { desc: The brightest asteroid, sometimes visible to the naked eye. Many meteorites on Earth came from it. }
+pallas: { desc: A large asteroid whose orbit is tilted 35° from the main belt. }
+eros: { desc: The first near-Earth asteroid a spacecraft landed on (NEAR Shoemaker, 2001). }
+apophis: { desc: On 13 April 2029 it will pass Earth below the geostationary satellites, visible to the naked eye. }
+bennu: { desc: OSIRIS-REx brought a sample of it back to Earth in 2023. }
+eris: { desc: Slightly more massive than Pluto. Its discovery in 2005 led the IAU to redefine the word planet. }
+haumea: { desc: It spins every 4 hours, stretching it into a rugby-ball shape, and it has a ring. }
+makemake: { desc: A reddish-brown dwarf planet in the Kuiper belt with frozen methane on its surface. }
+gonggong: { desc: A red trans-Neptunian object on an eccentric, tilted orbit between 33 and 101 AU from the Sun. }
+quaoar: { desc: Has a ring beyond its Roche limit, where theory says the material should have formed a moon. }
+orcus: { desc: Its orbit is like Pluto's but always on the opposite side, hence the nickname "anti-Pluto". }
+sedna: { desc: An orbit of about 11,000 years reaching nearly 1,000 AU. It never comes near Neptune, so it may be the first known member of the inner Oort cloud. }
+vp113: { desc: The second Sedna-like object, with a perihelion of 80 AU, nearly three times Neptune's distance. }
+leleakuhonua: { desc: An orbit over 30,000 years long reaching about 2,000 AU, used in the search for a hypothetical ninth planet. }
+farfarout: { desc: The most distant object ever observed in the Solar System, 132 AU away when found. }
+arrokoth: { desc: Two lobes joined like a snowman, the most distant object a spacecraft has visited (New Horizons, 2019). }
+halley: { desc: The most famous short-period comet, returning every 75–79 years. Last seen in 1986, next due around July 2061. }
+encke: { desc: The shortest period of any visible comet, 3.3 years, and the source of the Taurid meteors. }
+churyumov-gerasimenko: { desc: Rosetta orbited it and set the Philae lander down in 2014, the first landing on a comet. }
+hale-bopp: { desc: The great comet of 1997, visible to the naked eye for 18 months, on an orbit of about 2,400 years. }
+hyakutake: { desc: Passed close to Earth in 1996 with the longest tail ever measured, over 3.8 AU. }
+neowise: { desc: The bright comet of mid-2020. It will be back in about 6,700 years. }
+tsuchinshan-atlas: { desc: A bright comet of October 2024 that came in from the Oort cloud. }
+bernardinelli-bernstein: { desc: The largest comet nucleus known, about 120 km across, on its way in from the Oort cloud to a perihelion near Saturn's orbit in 2031. }
+oumuamua:
+  desc: >-
+    The first object found from another star system (19 October 2017), already past the Sun and on its way out
+    when it was spotted. Its orbit is a hyperbola, so it passed once and will not return.
+
+    No telescope has ever seen its shape: to all of them it was a single point of light. What was measured is its
+    brightness, which rose and fell about tenfold every few hours. That means it was tumbling rather than spinning
+    about one axis, and that one side is several times longer than another.
+    The shape in this app is a model: a flat disk about 115 × 111 × 19 m, which Mashchenko (2019) found fits the
+    brightness best. A cigar about six times longer than it is wide is also possible, and that is the shape in the
+    artist's impression often seen in the news.
+
+    It was also pushed away from the Sun a little harder than gravity alone explains, with no visible tail or gas.
+    Why is still not settled.
+borisov: { desc: The first interstellar comet, found by an amateur astronomer in 2019. }
+atlas3i: { desc: The third interstellar object, found in July 2025. Moving at over 58 km/s, it may be older than the Solar System. }
+pioneer-10: { desc: The first craft to cross the asteroid belt and fly past Jupiter (1973). It carries a plaque for whoever finds it. Last contact was in 2003. }
+pioneer-11: { desc: The first craft to fly past Saturn (1979). Last contact was in 1995. }
+voyager-1: { desc: The most distant human-made object. It crossed the heliopause into interstellar space in 2012 and still sends data home. }
+voyager-2: { desc: The only craft to visit Uranus (1986) and Neptune (1989). It left the heliosphere in 2018. }
+new-horizons: { desc: Flew past Pluto in 2015 and Arrokoth in 2019, and is heading out of the Solar System. }

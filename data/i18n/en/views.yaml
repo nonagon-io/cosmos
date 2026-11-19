@@ -1,0 +1,10 @@
+earth-moon: { name: Earth and Moon }
+inner: { name: Inner planets }
+jupiter-belt: { name: Asteroid belt and Jupiter }
+outer: { name: Outer planets }
+kuiper: { name: Kuiper belt }
+heliosphere: { name: Heliosphere and the Voyagers }
+sednoids: { name: Sedna's orbit }
+inner-oort: { name: Inner Oort cloud }
+outer-oort: { name: Outer Oort cloud }
+nearest-stars: { name: Nearest stars }

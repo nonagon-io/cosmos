@@ -1,0 +1,83 @@
+halley-1910:
+  title: Halley's Comet at perihelion
+  desc: In May Earth passed through the comet's tail. Some newspapers warned its gas would be deadly, and people bought "comet pills".
+pluto-found:
+  title: Pluto discovered
+  desc: Clyde Tombaugh, 24, found it by comparing sky photographs at Lowell Observatory.
+sputnik:
+  title: Sputnik 1
+  desc: The first artificial satellite starts the space age.
+apollo-11:
+  title: Apollo 11 lands on the Moon
+  desc: Neil Armstrong and Buzz Aldrin become the first people to walk on the Moon.
+pioneer-10-launch: { title: Pioneer 10 launched }
+pioneer-10-jupiter:
+  title: Pioneer 10 flies past Jupiter
+  desc: The first close-up images of Jupiter.
+voyager-2-launch:
+  title: Voyager 2 launched
+  desc: It used an alignment of the outer planets that comes every 175 years to visit all four.
+voyager-1-launch: { title: Voyager 1 launched }
+voyager-1-jupiter:
+  title: Voyager 1 at Jupiter
+  desc: Finds active volcanoes on Io, the first seen beyond Earth, and Jupiter's faint ring.
+pioneer-11-saturn: { title: Pioneer 11 flies past Saturn }
+voyager-1-saturn:
+  title: Voyager 1 at Saturn
+  desc: It swung close to Titan, which flung it up out of the plane of the planets.
+voyager-2-saturn: { title: Voyager 2 at Saturn }
+voyager-2-uranus:
+  title: Voyager 2 at Uranus
+  desc: The only visit so far. It found 10 new moons.
+halley-1986:
+  title: Halley's Comet returns
+  desc: Europe's Giotto passed 596 km from the nucleus and took the first pictures of a comet's nucleus.
+voyager-2-neptune:
+  title: Voyager 2 at Neptune
+  desc: It passed 4,950 km over Neptune's north pole, then went on to Triton.
+pale-blue-dot:
+  title: The Pale Blue Dot
+  desc: Voyager 1 turned its camera back and photographed Earth from 40 AU. Earth is less than a pixel in the image.
+sl9:
+  title: Comet Shoemaker–Levy 9 hits Jupiter
+  desc: Over 20 fragments struck over six days, leaving dark scars larger than Earth. The first collision of two Solar System bodies ever seen.
+hyakutake-1996: { title: Comet Hyakutake passes close to Earth }
+hale-bopp-1997: { title: Comet Hale–Bopp at perihelion }
+voyager-1-shock:
+  title: Voyager 1 crosses the termination shock
+  desc: At 94 AU the solar wind drops abruptly from supersonic speed.
+huygens:
+  title: Huygens lands on Titan
+  desc: The most distant landing ever made, about 1.2 billion km from Earth.
+pluto-dwarf:
+  title: Pluto becomes a dwarf planet
+  desc: After the discovery of Eris, the IAU redefines what a planet is, leaving eight.
+voyager-1-heliopause:
+  title: Voyager 1 reaches interstellar space
+  desc: The first craft to cross the heliopause, at 121 AU.
+philae: { title: Philae lands on comet 67P }
+new-horizons-pluto:
+  title: New Horizons flies past Pluto
+  desc: Pluto seen clearly for the first time, with the heart-shaped Tombaugh Regio and ice mountains 3 km high.
+oumuamua-found:
+  title: ʻOumuamua discovered
+  desc: Pan-STARRS in Hawaii finds the first object from another star system, already past perihelion and heading out.
+voyager-2-heliopause: { title: Voyager 2 reaches interstellar space }
+arrokoth-flyby:
+  title: New Horizons flies past Arrokoth
+  desc: The most distant object ever explored by a spacecraft, at 44 AU.
+neowise-2020: { title: Comet NEOWISE }
+great-conjunction:
+  title: Jupiter and Saturn closest in 400 years
+  desc: Only 0.1° apart in the sky, but more than 700 million km apart in space.
+tsuchinshan-2024: { title: Comet Tsuchinshan–ATLAS passes Earth }
+atlas3i-found: { title: Third interstellar object discovered }
+voyager-1-light-day:
+  title: Voyager 1 one light-day from Earth
+  desc: Its radio signal takes 24 hours to reach Earth.
+  uncertain: Approximate date; it depends on where Earth is in its orbit.
+apophis-2029:
+  title: Apophis passes Earth
+  desc: About 32,000 km above the surface, closer than geostationary satellites, and visible to the naked eye from Europe and Africa.
+bernardinelli-2031: { title: Giant comet Bernardinelli–Bernstein at perihelion }
+halley-2061: { title: Halley's Comet returns again }

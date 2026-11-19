@@ -1,0 +1,10 @@
+asteroid-belt:
+  desc: Millions of asteroids between Mars and Jupiter, together only about 3% of the Moon's mass. Shown are those larger than about 5 km, on their real orbits from the JPL database. The Kirkwood gaps are cleared by resonances with Jupiter.
+trojans:
+  desc: Two swarms that lead and trail Jupiter by 60°, at its L4 and L5 Lagrange points. The Lucy spacecraft is on its way to them.
+kuiper-belt:
+  desc: A belt of icy bodies beyond Neptune, home to Pluto, Haumea and Makemake. The crowd at 39.4 AU is in a 2:3 resonance with Neptune, like Pluto. Every dot is a real, discovered object.
+heliosphere:
+  desc: The bubble of solar wind around the Solar System. Voyager 1 crossed the termination shock at 94 AU in 2004 and the heliopause at 121 AU in 2012, where the solar wind stops and interstellar space begins. The real shape trails out like a comet's tail; it is drawn here as a rough sphere.
+oort-cloud:
+  desc: A spherical shell of perhaps trillions of icy bodies, the source of long-period comets. No object in the Oort cloud has ever been observed directly, so what you see is a model based on theory. The inner part is a thick disk from about 2,000 to 20,000 AU; the outer part is a sphere reaching about 100,000 AU, or 1.6 light years, nearly halfway to the next star. Voyager 1 will take about 300 years just to reach its inner edge.

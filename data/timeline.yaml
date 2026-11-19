@@ -1,0 +1,10 @@
+# Dates are UTC. The slider is stretched around the space age, where most events are.
+start: '1900-01-01'
+end: '2099-12-31'
+scale:
+  - ['1900-01-01', 0]
+  - ['1955-01-01', 0.14]
+  - ['2030-01-01', 0.86]
+  - ['2099-12-31', 1]
+ticks: [1900, 1925, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020, 2030, 2050, 2075, 2100]
+initialView: { focus: earth, distance: 0.008 }

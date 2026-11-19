@@ -1,0 +1,277 @@
+# `focus` is the body the camera flies to, `distance` the camera distance in AU.
+# importance: 3 stops playback, 2 shows a notice while playing.
+- id: halley-1910
+  date: '1910-04-20'
+  title: ดาวหางฮัลเลย์ผ่านจุดใกล้ดวงอาทิตย์
+  desc: เดือนพฤษภาคมโลกเคลื่อนผ่านหางของดาวหาง หนังสือพิมพ์บางฉบับลือว่าก๊าซในหางจะทำให้คนตาย จนมีคนแห่ซื้อ "ยาเม็ดกันดาวหาง"
+  focus: halley
+  distance: 2.5
+  importance: 2
+
+- id: pluto-found
+  date: '1930-02-18'
+  title: พบดาวพลูโต
+  desc: ไคลด์ ทอมบอห์ วัย 24 ปี พบจากการเทียบภาพถ่ายท้องฟ้าที่หอดูดาวโลเวลล์
+  focus: pluto
+  distance: 0.4
+  importance: 2
+
+- id: sputnik
+  date: '1957-10-04'
+  title: สปุตนิก 1
+  desc: ดาวเทียมดวงแรกของโลก เริ่มต้นยุคอวกาศ
+  focus: earth
+  distance: 0.0004
+  importance: 2
+
+- id: apollo-11
+  date: '1969-07-20'
+  title: อะพอลโล 11 ลงจอดบนดวงจันทร์
+  desc: นีล อาร์มสตรอง และบัซ อัลดริน เป็นมนุษย์คู่แรกที่เดินบนดวงจันทร์
+  focus: moon
+  distance: 0.00012
+  importance: 3
+
+- id: pioneer-10-launch
+  date: '1972-03-03'
+  title: ส่งยานไพโอเนียร์ 10
+  focus: pioneer-10
+  distance: 0.05
+  importance: 1
+
+- id: pioneer-10-jupiter
+  date: '1973-12-04'
+  title: ไพโอเนียร์ 10 บินผ่านดาวพฤหัสบดี
+  desc: ภาพระยะใกล้ของดาวพฤหัสบดีชุดแรก
+  focus: jupiter
+  distance: 0.04
+  importance: 2
+
+- id: voyager-2-launch
+  date: '1977-08-20'
+  title: ส่งยานวอยเอเจอร์ 2
+  desc: ใช้จังหวะที่ดาวเคราะห์ชั้นนอกเรียงตัวกันซึ่งเกิดทุก 175 ปี บินผ่านได้ครบทั้งสี่ดวง
+  focus: voyager-2
+  distance: 0.05
+  importance: 1
+
+- id: voyager-1-launch
+  date: '1977-09-05'
+  title: ส่งยานวอยเอเจอร์ 1
+  focus: voyager-1
+  distance: 0.05
+  importance: 2
+
+- id: voyager-1-jupiter
+  date: '1979-03-05'
+  title: วอยเอเจอร์ 1 บินผ่านดาวพฤหัสบดี
+  desc: พบภูเขาไฟคุกรุ่นบนไอโอ ซึ่งเป็นครั้งแรกที่พบภูเขาไฟนอกโลก และพบวงแหวนบาง ๆ ของดาวพฤหัสบดี
+  focus: jupiter
+  distance: 0.03
+  importance: 3
+
+- id: pioneer-11-saturn
+  date: '1979-09-01'
+  title: ไพโอเนียร์ 11 บินผ่านดาวเสาร์
+  focus: saturn
+  distance: 0.03
+  importance: 1
+
+- id: voyager-1-saturn
+  date: '1980-11-12'
+  title: วอยเอเจอร์ 1 บินผ่านดาวเสาร์
+  desc: เบนเส้นทางไปดูไททันใกล้ ๆ แล้วพุ่งขึ้นออกจากระนาบระบบสุริยะ
+  focus: saturn
+  distance: 0.03
+  importance: 3
+
+- id: voyager-2-saturn
+  date: '1981-08-25'
+  title: วอยเอเจอร์ 2 บินผ่านดาวเสาร์
+  focus: saturn
+  distance: 0.03
+  importance: 2
+
+- id: voyager-2-uranus
+  date: '1986-01-24'
+  title: วอยเอเจอร์ 2 บินผ่านดาวยูเรนัส
+  desc: ยานลำเดียวที่เคยไปถึง พบดวงจันทร์ใหม่ 10 ดวง
+  focus: uranus
+  distance: 0.012
+  importance: 3
+
+- id: halley-1986
+  date: '1986-02-09'
+  title: ดาวหางฮัลเลย์กลับมา
+  desc: ยานจอตโตของยุโรปบินเข้าไปห่างนิวเคลียสเพียง 596 กม. ได้ภาพนิวเคลียสดาวหางครั้งแรก
+  focus: halley
+  distance: 2.5
+  importance: 2
+
+- id: voyager-2-neptune
+  date: '1989-08-25'
+  title: วอยเอเจอร์ 2 บินผ่านดาวเนปจูน
+  desc: ผ่านเหนือขั้วเหนือของดาวเนปจูนเพียง 4,950 กม. แล้วไปดูไทรทัน
+  focus: neptune
+  distance: 0.012
+  importance: 3
+
+- id: pale-blue-dot
+  date: '1990-02-14'
+  title: จุดสีฟ้าซีด
+  desc: วอยเอเจอร์ 1 หันกล้องกลับมาถ่ายภาพโลกจากระยะ 40 AU โลกในภาพมีขนาดไม่ถึงหนึ่งพิกเซล
+  focus: voyager-1
+  distance: 45
+  importance: 3
+
+- id: sl9
+  date: '1994-07-16'
+  title: ดาวหางชูเมกเกอร์–เลวี 9 ชนดาวพฤหัสบดี
+  desc: ชิ้นส่วนกว่า 20 ชิ้นพุ่งชนต่อเนื่องหกวัน ทิ้งรอยดำที่ใหญ่กว่าโลก เป็นครั้งแรกที่มนุษย์เห็นวัตถุสองชิ้นในระบบสุริยะชนกัน
+  focus: jupiter
+  distance: 0.004
+  importance: 2
+
+- id: hyakutake-1996
+  date: '1996-03-25'
+  title: ดาวหางเฮียะกุตะเกะผ่านใกล้โลก
+  focus: hyakutake
+  distance: 0.4
+  importance: 1
+
+- id: hale-bopp-1997
+  date: '1997-04-01'
+  title: ดาวหางเฮล–บอปป์ผ่านจุดใกล้ดวงอาทิตย์
+  focus: hale-bopp
+  distance: 4
+  importance: 2
+
+- id: voyager-1-shock
+  date: '2004-12-16'
+  title: วอยเอเจอร์ 1 ข้ามคลื่นกระแทกปลายทาง
+  desc: ที่ 94 AU ลมสุริยะชะลอตัวจากความเร็วเหนือเสียงลงทันที
+  focus: voyager-1
+  distance: 160
+  importance: 1
+
+- id: huygens
+  date: '2005-01-14'
+  title: ยานฮอยเกนส์ลงจอดบนไททัน
+  desc: การลงจอดที่ไกลที่สุดเท่าที่มนุษย์เคยทำ ห่างโลกราว 1,200 ล้านกม.
+  focus: titan
+  distance: 0.0002
+  importance: 2
+
+- id: pluto-dwarf
+  date: '2006-08-24'
+  title: พลูโตเป็นดาวเคราะห์แคระ
+  desc: IAU นิยามคำว่าดาวเคราะห์ใหม่หลังการค้นพบอีรีส ระบบสุริยะจึงเหลือดาวเคราะห์แปดดวง
+  focus: pluto
+  distance: 0.5
+  importance: 2
+
+- id: voyager-1-heliopause
+  date: '2012-08-25'
+  title: วอยเอเจอร์ 1 ออกสู่อวกาศระหว่างดาว
+  desc: ยานลำแรกที่ข้ามเฮลิโอพอส ระยะ 121 AU
+  focus: voyager-1
+  distance: 250
+  importance: 3
+
+- id: philae
+  date: '2014-11-12'
+  title: ยานฟิเลลงจอดบนดาวหาง 67P
+  focus: churyumov-gerasimenko
+  distance: 0.0001
+  importance: 2
+
+- id: new-horizons-pluto
+  date: '2015-07-14'
+  title: นิวฮอไรซันส์บินผ่านดาวพลูโต
+  desc: เห็นพลูโตชัดครั้งแรก พบที่ราบน้ำแข็งรูปหัวใจชื่อทอมบอห์ และภูเขาน้ำแข็งสูง 3 กม.
+  focus: pluto
+  distance: 0.0004
+  importance: 3
+
+- id: oumuamua-found
+  date: '2017-10-19'
+  title: พบโอมูอามูอา
+  desc: กล้อง Pan-STARRS ในฮาวายพบวัตถุแรกจากระบบดาวอื่น ตอนนั้นมันผ่านจุดใกล้ดวงอาทิตย์ไปแล้วและกำลังออกไป
+  focus: oumuamua
+  distance: 1.6
+  importance: 2
+
+- id: voyager-2-heliopause
+  date: '2018-11-05'
+  title: วอยเอเจอร์ 2 ออกสู่อวกาศระหว่างดาว
+  focus: voyager-2
+  distance: 250
+  importance: 1
+
+- id: arrokoth-flyby
+  date: '2019-01-01'
+  title: นิวฮอไรซันส์บินผ่านอาร์โรคอท
+  desc: วัตถุที่ไกลที่สุดที่ยานอวกาศเคยไปสำรวจ ระยะ 44 AU
+  focus: arrokoth
+  distance: 0.002
+  importance: 2
+
+- id: neowise-2020
+  date: '2020-07-03'
+  title: ดาวหางนีโอไวส์
+  focus: neowise
+  distance: 1.5
+  importance: 1
+
+- id: great-conjunction
+  date: '2020-12-21'
+  title: ดาวพฤหัสบดีและดาวเสาร์ชิดกันที่สุดในรอบ 400 ปี
+  desc: บนท้องฟ้าห่างกันเพียง 0.1° แต่ในอวกาศอยู่ห่างกันกว่า 700 ล้านกม.
+  focus: earth
+  distance: 12
+  importance: 1
+
+- id: tsuchinshan-2024
+  date: '2024-10-12'
+  title: ดาวหางจื่อจินซาน–แอตลัสผ่านใกล้โลก
+  focus: tsuchinshan-atlas
+  distance: 1.2
+  importance: 1
+
+- id: atlas3i-found
+  date: '2025-07-01'
+  title: พบวัตถุจากนอกระบบสุริยะดวงที่สาม
+  focus: atlas3i
+  distance: 6
+  importance: 2
+
+- id: voyager-1-light-day
+  date: '2026-11-15'
+  title: วอยเอเจอร์ 1 ห่างโลกหนึ่งวันแสง
+  desc: สัญญาณวิทยุจากยานต้องเดินทาง 24 ชั่วโมงกว่าจะมาถึงโลก
+  focus: voyager-1
+  distance: 400
+  importance: 2
+  uncertain: วันที่โดยประมาณ ขึ้นกับตำแหน่งโลกในวงโคจรตอนนั้น
+
+- id: apophis-2029
+  date: '2029-04-13'
+  title: อะโพฟิสผ่านใกล้โลก
+  desc: ห่างผิวโลกราว 32,000 กม. ใกล้กว่าดาวเทียมค้างฟ้า เห็นได้ด้วยตาเปล่าจากยุโรปและแอฟริกา
+  focus: earth
+  distance: 0.0012
+  importance: 3
+
+- id: bernardinelli-2031
+  date: '2031-01-25'
+  title: ดาวหางยักษ์เบอร์นาร์ดิเนลลี–เบิร์นสไตน์ถึงจุดใกล้สุด
+  focus: bernardinelli-bernstein
+  distance: 40
+  importance: 1
+
+- id: halley-2061
+  date: '2061-07-28'
+  title: ดาวหางฮัลเลย์กลับมาอีกครั้ง
+  focus: halley
+  distance: 2.5
+  importance: 3
