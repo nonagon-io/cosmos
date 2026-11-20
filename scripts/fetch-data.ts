@@ -1156,7 +1156,8 @@ const DESI_MPC = 1 / 8;
 
 /** Streams a FITS binary table, calling `row` with the named float or double columns of each row. */
 async function readFits(url: string, names: string[], row: (v: number[]) => void) {
-  const res = await fetch(url);
+  // some archives (Zenodo) turn away a client that gives no name
+  const res = await fetch(url, { headers: { 'User-Agent': 'fetch-data' } });
   if (!res.ok || !res.body) {
     throw new Error(`${url}: ${res.status}`);
   }
@@ -1241,8 +1242,15 @@ async function desi() {
     });
     console.log(`  ${f}: ${n}`);
   }
+  writeSurvey('desi', kept, DESI_KEEP, DESI_MPC);
+}
+
+/**
+ * Writes a survey's `kept` (RA, Dec, z, ...) as name-0.bin and on, a random `keep` of them in a fixed shuffle,
+ * cut like the SDSS files, and name.json for the app.
+ */
+function writeSurvey(name: string, kept: number[], keep: number, unit: number) {
   const total = kept.length / 3;
-  // a fixed shuffle of the indices, then the first DESI_KEEP
   let seed = 2;
   const rand = () => {
     seed = (seed * 16807) % 2147483647;
@@ -1253,8 +1261,8 @@ async function desi() {
     const j = Math.floor(rand() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
-  const count = Math.min(DESI_KEEP, total);
-  const bounds = [0, SDSS_FIRST];
+  const count = Math.min(keep, total);
+  const bounds = [0, Math.min(count, SDSS_FIRST)];
   while (bounds[bounds.length - 1] < count) {
     bounds.push(Math.min(count, bounds[bounds.length - 1] + SDSS_CHUNK));
   }
@@ -1265,12 +1273,49 @@ async function desi() {
       const o = (i - bounds[k]) * 3;
       out[o] = Math.round((kept[j] / 360) * 65535);
       out[o + 1] = Math.round(((kept[j + 1] + 90) / 180) * 65535);
-      out[o + 2] = Math.min(65535, Math.round(comoving(kept[j + 2]) / DESI_MPC));
+      out[o + 2] = Math.min(65535, Math.round(comoving(kept[j + 2]) / unit));
     }
-    writeFileSync(join(DATA, `desi-${k}.bin`), Buffer.from(out.buffer));
+    writeFileSync(join(DATA, `${name}-${k}.bin`), Buffer.from(out.buffer));
   }
-  save('desi.json', { files: bounds.length - 1, count, unit: DESI_MPC });
+  save(`${name}.json`, { files: bounds.length - 1, count, unit });
   console.log(`  ${count} of ${total} in ${bounds.length - 1} files`);
+}
+
+// ---- Quaia ----
+
+// Quaia (Storey-Fisher et al. 2024): about 1.3 million quasars Gaia found over the whole sky, down to G = 20.5,
+// with redshifts from Gaia's low-resolution spectra and unWISE colours. Those redshifts are rough, off by 10% or
+// more for some, but it is the one deep map that goes all the way round. Quasars DESI has already are left out,
+// as DESI's redshifts are the better ones.
+const QUAIA = 'https://zenodo.org/api/records/10403370/files/quaia_G20.5.fits/content';
+
+async function quaia() {
+  console.log('quaia');
+  // DESI's points by their packed position, which is good to about 20 arcseconds, with their distance
+  const desi = new Map<number, number>();
+  const manifest = JSON.parse(readFileSync(join(DATA, 'desi.json'), 'utf8')) as { files: number };
+  for (let k = 0; k < manifest.files; k++) {
+    const a = new Uint16Array(readFileSync(join(DATA, `desi-${k}.bin`)).buffer.slice(0));
+    for (let i = 0; i < a.length; i += 3) {
+      desi.set(a[i] * 65536 + a[i + 1], a[i + 2] * DESI_MPC);
+    }
+  }
+  const kept: number[] = [];
+  let dup = 0;
+  await readFits(QUAIA, ['ra', 'dec', 'redshift_quaia'], ([ra, dec, z]) => {
+    if (!(z > 0)) {
+      return;
+    }
+    // the same packed position and about the same distance: the same quasar, near enough every time
+    const there = desi.get(Math.round((ra / 360) * 65535) * 65536 + Math.round(((dec + 90) / 180) * 65535));
+    if (there && Math.abs(there / comoving(z) - 1) < 0.2) {
+      dup++;
+      return;
+    }
+    kept.push(ra, dec, z);
+  });
+  console.log(`  ${dup} DESI has already`);
+  writeSurvey('quaia', kept, Number.POSITIVE_INFINITY, DESI_MPC);
 }
 
 // ---- Planck ----
@@ -1417,6 +1462,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   sixdf,
   sdss,
   desi,
+  quaia,
   cmb,
   textures,
 };

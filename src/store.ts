@@ -16,6 +16,7 @@ export interface Layers {
   trueSize: boolean;
   sdss: boolean;
   desi: boolean;
+  quaia: boolean;
 }
 
 interface Events {
@@ -62,6 +63,7 @@ export class Store {
     trueSize: false,
     sdss: true,
     desi: true,
+    quaia: true,
   };
   private readonly handlers: { [K in keyof Events]?: Handler<Events[K]>[] } = {};
 

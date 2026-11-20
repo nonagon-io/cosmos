@@ -10,6 +10,8 @@ const REF_COUNT = 100000;
 const BUDGET = 3e6;
 const MIN_BUDGET = 150000;
 
+export type SurveyName = 'sdss' | 'desi' | 'quaia';
+
 export interface SurveyManifest {
   files: number;
   count: number;
@@ -33,7 +35,7 @@ export class Survey {
 
   constructor(
     parent: Group,
-    readonly name: 'sdss' | 'desi',
+    readonly name: SurveyName,
     private readonly manifest: SurveyManifest,
   ) {
     this.pos = new BufferAttribute(new Float32Array(manifest.count * 3), 3);

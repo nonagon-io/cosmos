@@ -30,7 +30,7 @@ import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orb
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
 import { SgrA } from './sgra';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
-import { Survey, type SurveyManifest } from './survey';
+import { Survey, type SurveyManifest, type SurveyName } from './survey';
 import { CometTails } from './tails';
 import { haze } from './textures';
 
@@ -334,7 +334,7 @@ export class World {
   }
 
   /** A survey's galaxies, which arrive after the rest. `name` is its layer. */
-  addSurvey(name: 'sdss' | 'desi', manifest: SurveyManifest) {
+  addSurvey(name: SurveyName, manifest: SurveyManifest) {
     const s = new Survey(this.world, name, manifest);
     this.surveys.push(s);
     return s;

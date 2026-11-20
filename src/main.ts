@@ -8,7 +8,7 @@ import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
 import { eclipticDir, type StarData, type StarField } from './scene/stars';
-import type { SurveyManifest } from './scene/survey';
+import type { SurveyManifest, SurveyName } from './scene/survey';
 import { World } from './scene/world';
 import { setupSearch } from './search';
 import { DEEP_RANGE, Store } from './store';
@@ -46,7 +46,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * the camera heads out past `restFrom` light years with the survey's layer on, and not at all when the browser
  * asks to save data.
  */
-async function streamSurvey(world: World, store: Store, name: 'sdss' | 'desi', restFrom: number) {
+async function streamSurvey(world: World, store: Store, name: SurveyName, restFrom: number) {
   let manifest: SurveyManifest;
   try {
     manifest = await json<SurveyManifest>(`${name}.json`);
@@ -173,6 +173,7 @@ async function start() {
   void sleep(1500).then(() => {
     void streamSurvey(world, store, 'sdss', 1e8);
     void streamSurvey(world, store, 'desi', 1e9);
+    void streamSurvey(world, store, 'quaia', 1e9);
   });
   // a moon's heading is the one around its planet, not the planet's own around the Sun
   rig.velocityOf = (id) => {
