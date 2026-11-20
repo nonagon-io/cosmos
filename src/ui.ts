@@ -238,6 +238,7 @@ export function setupUI(store: Store, act: Actions) {
       ${r.galaxies ? `<p class="note">${esc(t.galaxyField)}</p>` : ''}
       ${at?.home ? `<p class="note">${esc(t.galaxyModel)}</p>` : ''}
       ${at?.type === 'blackhole' ? `<p class="note">${esc(t.blackholeModel)}</p>` : ''}
+      ${at?.type === 'void' ? `<p class="note">${esc(t.voidNote)}</p>` : ''}
       ${M31_SYSTEM.has(r.id) ? `<p class="note">${esc(t.spiralModel)}</p>` : ''}
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}

@@ -7,6 +7,7 @@ import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume 
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
+import type { SdssManifest } from './scene/sdss';
 import { eclipticDir, type StarData, type StarField } from './scene/stars';
 import { World } from './scene/world';
 import { setupSearch } from './search';
@@ -35,6 +36,39 @@ function showError(title: string, problems: string[], hint = '') {
   (el.querySelector('p') as HTMLElement).textContent = hint;
   for (const [i, li] of [...el.querySelectorAll('li')].entries()) {
     li.textContent = problems[i];
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * The SDSS galaxies come last and in pieces: the first file once the page is up, the rest only when the camera
+ * heads out toward them, and not at all when the browser asks to save data.
+ */
+async function streamSdss(world: World) {
+  await sleep(1500);
+  let manifest: SdssManifest;
+  try {
+    manifest = await json<SdssManifest>('sdss.json');
+  } catch {
+    return;
+  }
+  const layer = world.addSdss(manifest);
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  for (let k = 0; k < manifest.files; k++) {
+    if (k === 1) {
+      if (saveData) {
+        return;
+      }
+      while (!world.farOut) {
+        await sleep(500);
+      }
+    }
+    const res = await fetch(`${BASE}data/sdss-${k}.bin`);
+    if (!res.ok) {
+      return;
+    }
+    layer.add(new Uint16Array(await res.arrayBuffer()));
   }
 }
 
@@ -130,6 +164,7 @@ async function start() {
     (id) => pickLabel(id),
   );
   const rig = world.rig;
+  void streamSdss(world);
   // a moon's heading is the one around its planet, not the planet's own around the Sun
   rig.velocityOf = (id) => {
     const v = eph.velocity(id, store.day);

@@ -17,3 +17,4 @@ nearby-galaxies: { name: Nearby galaxies }
 local-volume: { name: Galaxies within 35 million light years }
 virgo: { name: The Local Supercluster }
 cosmicflows: { name: Galaxies with measured distances }
+cosmic-web: { name: The cosmic web }

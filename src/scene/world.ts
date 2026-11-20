@@ -18,7 +18,7 @@ import { t } from '../i18n';
 import type { Store } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
-import { Cosmicflows } from './cosmicflows';
+import { Cosmicflows, WEB_LAYER } from './cosmicflows';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
@@ -27,6 +27,7 @@ import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
+import { Sdss, type SdssManifest } from './sdss';
 import { SgrA } from './sgra';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
 import { CometTails } from './tails';
@@ -42,6 +43,10 @@ const DEEP_IN = 6000;
 const DEEP_OUT = 4500;
 // light years from the Sun beyond which the dwarf galaxies get names
 const LOCAL_GROUP_LABELS = 500000;
+// light years from the Sun past which the rest of the SDSS galaxies start to download
+const SDSS_FETCH_LY = 1e8;
+// zoom, in light years, out to which the galaxy points need no extra exposure
+const WEB_EXPOSE_LY = 2e9;
 // device pixels the black hole's disk starts out allowed to trace, and the size past which frame times adjust
 // that; the layer it is drawn on when scaled down
 const HOLE_BUDGET = 300000;
@@ -124,12 +129,14 @@ export class World {
   private readonly localGroup: LocalGroup;
   private readonly localVolume: LocalVolume;
   private readonly cosmicflows: Cosmicflows;
+  private sdss: Sdss | null = null;
   /** Galaxies other than ours, where the Solar System's dates mean nothing however close the camera is. */
   private readonly otherGalaxies: Set<string>;
   // Sgr A*'s disk is ray traced per pixel, which filling the screen can cost more than a slow GPU has. It gets a
   // pixel budget, past which it is drawn smaller and scaled up; the budget grows while frames keep up and shrinks
   // while they don't, so a fast GPU ends up at full resolution.
   private readonly holePass = new LowResPass();
+  private readonly webPass = new LowResPass(true);
   private holeScale = 1;
   private holeBudget = HOLE_BUDGET;
   private frameMs = 1000 / 60;
@@ -326,6 +333,17 @@ export class World {
   }
 
   /** Positions of every body at `day`, parents first. */
+  /** The SDSS galaxies, which arrive after the rest. */
+  addSdss(manifest: SdssManifest) {
+    this.sdss = new Sdss(this.world, manifest);
+    return this.sdss;
+  }
+
+  /** Whether the camera is out far enough that the rest of the SDSS galaxies are worth fetching. */
+  get farOut() {
+    return Math.hypot(...this.camPos) > SDSS_FETCH_LY * AU_PER_LY;
+  }
+
   private computePositions(day: number, time: AstroTime) {
     this.positions.clear();
     const shift = Galaxy.sunShift(this.store.myr);
@@ -334,6 +352,7 @@ export class World {
     this.localGroup.setTime(shift, drift, this.store.myr);
     this.localVolume.setTime(shift);
     this.cosmicflows.setTime(shift);
+    this.sdss?.setTime(shift);
     for (const o of this.deepSky) {
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));
@@ -486,6 +505,7 @@ export class World {
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
+    this.sdss?.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs);
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
@@ -524,6 +544,12 @@ export class World {
     this.renderer.render(this.scene, cam);
     if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
       this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
+    }
+    if (this.cosmicflows.visible || this.sdss?.visible) {
+      // zoomed in among the galaxies they spread out over the screen, few to a pixel: expose for longer
+      const zoomLy = this.rig.distance / AU_PER_LY;
+      this.webPass.gain.value = 4 * MathUtils.clamp((WEB_EXPOSE_LY / zoomLy) ** 0.7, 1, 30);
+      this.webPass.render(this.renderer, this.scene, cam, WEB_LAYER, 1);
     }
 
     if (layers.labels) {
@@ -762,22 +788,22 @@ export class World {
         }
       }
     }
-    // the big clusters, once the camera is out among them
-    if (Cosmicflows.labelled(Math.hypot(...this.camPos))) {
-      for (const c of this.cosmicflows.clusters) {
-        const s = this.screenOf(this.cosmicflows.placeOf(c.at));
-        if (s) {
-          entries.push({
-            id: `cf:${c.id}`,
-            text: t.clusters[c.id as keyof typeof t.clusters],
-            x: s.x,
-            y: s.y,
-            priority: 60,
-            color: '#e8d9b8',
-            className: 'region',
-            offset: -((t.clusters[c.id as keyof typeof t.clusters].length * 6.6) / 2),
-          });
-        }
+    for (const c of this.cosmicflows.clusters) {
+      if (!Cosmicflows.labelled(Math.hypot(...this.camPos))) {
+        continue;
+      }
+      const s = this.screenOf(this.cosmicflows.placeOf(c.at));
+      if (s) {
+        entries.push({
+          id: `cf:${c.id}`,
+          text: t.clusters[c.id as keyof typeof t.clusters],
+          x: s.x,
+          y: s.y,
+          priority: 60,
+          color: '#e8d9b8',
+          className: 'region',
+          offset: -((t.clusters[c.id as keyof typeof t.clusters].length * 6.6) / 2),
+        });
       }
     }
     // the brightest galaxies past the Local Group, once out among them

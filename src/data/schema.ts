@@ -75,7 +75,7 @@ const Region = z.object({
   // for a nebula the color of the glow drawn for it
   at: z
     .object({
-      type: z.enum(['cluster', 'nebula', 'galaxy', 'blackhole']),
+      type: z.enum(['cluster', 'nebula', 'galaxy', 'blackhole', 'void']),
       ra: z.number(),
       dec: z.number(),
       ly: z.number().positive(),

@@ -952,6 +952,134 @@ async function redshifts() {
   console.log(`  ${out.length / 3} galaxies`);
 }
 
+// ---- SDSS ----
+
+// Every galaxy with a good redshift in SDSS DR17, about 2.4 million out to z = 0.8, over the third of the sky
+// the survey covered. They are placed at their comoving distance, where they are now, on the same H0 = 75 scale
+// (flat, Omega_m = 0.3). Below z = 0.2 Tempel et al. (2017) grouped the main sample and corrected each galaxy's
+// distance for its orbit in its group; those are used where they exist. Galaxies already drawn from
+// Cosmicflows-4 or 2MRS are left out. The rest go out in a random order, split into a first SDSS_FIRST and
+// then SDSS_CHUNK at a time, so the app can show the first file at once and fill in the picture as the others
+// arrive: any prefix of the order is an even sample of the whole. Distances in units of 1/16 Mpc.
+const SDSS_SQL = 'https://skyserver.sdss.org/dr17/SkyServerWS/SearchTools/SqlSearch';
+const SDSS_FIRST = 100000;
+const SDSS_CHUNK = 300000;
+const SDSS_MPC = 1 / 16;
+const TEMPEL_H0 = 67.77;
+
+function comoving(z: number) {
+  // Simpson's rule on c / H(z)
+  const n = 64;
+  const e = (x: number) => 1 / Math.sqrt(0.3 * (1 + x) ** 3 + 0.7);
+  let s = e(0) + e(z);
+  for (let i = 1; i < n; i++) {
+    s += (i % 2 ? 4 : 2) * e((z * i) / n);
+  }
+  return ((299792.458 / H0) * s * z) / (3 * n);
+}
+
+async function sdss() {
+  console.log('sdss');
+  const corrected = new Map<string, number>();
+  const tempel = await (
+    await fetch(
+      'https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=J/A%2BA/602/A100/table1&-out=specID%20Distcor&-out.max=1000000',
+    )
+  ).text();
+  for (const line of tempel.split('\n')) {
+    const [id, d] = line.split('\t').map((s) => s.trim());
+    if (/^\d+$/.test(id) && Number(d) > 0) {
+      corrected.set(id, (Number(d) * TEMPEL_H0) / H0);
+    }
+  }
+  console.log(`  ${corrected.size} with group-corrected distances`);
+
+  // what is drawn already, on a 0.02 degree grid
+  const drawn = new Map<string, number[]>();
+  for (const [file, unit] of [
+    ['cosmicflows.bin', COSMICFLOWS_MPC],
+    ['redshifts.bin', COSMICFLOWS_MPC],
+  ] as const) {
+    const d = new Uint16Array(readFileSync(join(DATA, file)).buffer.slice(0));
+    for (let i = 0; i < d.length; i += 3) {
+      const ra = (d[i] / 65535) * 360;
+      const dec = (d[i + 1] / 65535) * 180 - 90;
+      const key = `${Math.round(ra * 50)},${Math.round(dec * 50)}`;
+      drawn.set(key, [...(drawn.get(key) ?? []), d[i + 2] * unit]);
+    }
+  }
+  const already = (ra: number, dec: number, mpc: number) => {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const near = drawn.get(`${Math.round(ra * 50) + dx},${Math.round(dec * 50) + dy}`);
+        if (near?.some((m) => Math.abs(m - mpc) < 0.15 * mpc)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const rows: number[][] = [];
+  let skipped = 0;
+  for (let ra = 0; ra < 360; ra += 10) {
+    const sql = `SELECT specObjID, ra, dec, z FROM SpecObj WHERE class='GALAXY' AND zWarning=0 AND sciencePrimary=1 AND z BETWEEN 0.01 AND 0.8 AND ra >= ${ra} AND ra < ${ra + 10}`;
+    let text = '';
+    // the server drops connections now and then
+    for (let k = 0; k < 8 && !text.includes('specObjID'); k++) {
+      try {
+        text = await (await fetch(`${SDSS_SQL}?format=csv&cmd=${encodeURIComponent(sql)}`)).text();
+      } catch {
+        await sleep(5000 * (k + 1));
+      }
+    }
+    if (!text.includes('specObjID')) {
+      throw new Error(`sdss: no answer for RA ${ra}`);
+    }
+    for (const line of text.split('\n').slice(2)) {
+      const [id, r, d, z] = line.split(',');
+      if (!z) {
+        continue;
+      }
+      const mpc = corrected.get(id) ?? comoving(Number(z));
+      if (already(Number(r), Number(d), mpc)) {
+        skipped++;
+        continue;
+      }
+      rows.push([Number(r), Number(d), mpc]);
+    }
+    process.stdout.write(`\r  RA ${ra + 10}: ${rows.length}`);
+  }
+  console.log(`\n  ${skipped} already drawn`);
+
+  // a fixed shuffle, so reruns give the same files
+  let seed = 1;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  for (let i = rows.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [rows[i], rows[j]] = [rows[j], rows[i]];
+  }
+  const bounds = [0, SDSS_FIRST];
+  while (bounds[bounds.length - 1] < rows.length) {
+    bounds.push(Math.min(rows.length, bounds[bounds.length - 1] + SDSS_CHUNK));
+  }
+  for (let k = 0; k < bounds.length - 1; k++) {
+    const part = rows.slice(bounds[k], bounds[k + 1]);
+    const out = new Uint16Array(part.length * 3);
+    part.forEach(([ra, dec, mpc], i) => {
+      out[i * 3] = Math.round((ra / 360) * 65535);
+      out[i * 3 + 1] = Math.round(((dec + 90) / 180) * 65535);
+      out[i * 3 + 2] = Math.min(65535, Math.round(mpc / SDSS_MPC));
+    });
+    writeFileSync(join(DATA, `sdss-${k}.bin`), Buffer.from(out.buffer));
+  }
+  save('sdss.json', { files: bounds.length - 1, count: rows.length, unit: SDSS_MPC });
+  console.log(`  ${rows.length} galaxies in ${bounds.length - 1} files`);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -963,6 +1091,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   localVolume,
   cosmicflows,
   redshifts,
+  sdss,
   textures,
 };
 const pick = process.argv.slice(2);

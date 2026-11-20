@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   type Camera,
   Color,
   HalfFloatType,
@@ -8,6 +9,7 @@ import {
   OrthographicCamera,
   PlaneGeometry,
   Scene,
+  ShaderMaterial,
   Vector2,
   type WebGLRenderer,
   WebGLRenderTarget,
@@ -25,7 +27,35 @@ export class LowResPass {
   private readonly overlay = new Scene();
   private readonly cam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  constructor() {
+  /** Brightness of one unit of light under `tone`. */
+  readonly gain = { value: 4 };
+
+  /**
+   * With `tone`, the layer's light is added up unclamped and then compressed logarithmically onto the frame:
+   * for points piled up by the thousand, which would otherwise burn out to flat white.
+   */
+  constructor(tone = false) {
+    if (tone) {
+      const mat = new ShaderMaterial({
+        uniforms: { map: { value: this.target.texture }, gain: this.gain },
+        vertexShader:
+          'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: `
+          uniform sampler2D map;
+          uniform float gain;
+          varying vec2 vUv;
+          void main() {
+            vec3 c = texture2D(map, vUv).rgb;
+            gl_FragColor = vec4(log(1.0 + c * gain) / log(1.0 + 64.0 * gain), 1.0);
+          }`,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      });
+      this.overlay.add(new Mesh(new PlaneGeometry(2, 2), mat));
+      return;
+    }
     // the target holds premultiplied colour, as the disk shader writes it
     const mat = new MeshBasicMaterial({
       map: this.target.texture,

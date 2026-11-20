@@ -84,3 +84,8 @@
   focus: milky-way
   distance: 120000000000000
   tilt: 35
+- id: cosmic-web
+  name: โครงข่ายใยจักรวาล
+  focus: milky-way
+  distance: 700000000000000
+  tilt: 35

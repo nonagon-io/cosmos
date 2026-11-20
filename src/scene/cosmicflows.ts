@@ -13,6 +13,8 @@ import { AU_PER_LY, eclipticDir } from './stars';
 
 // as written by fetch-data: three uint16 per galaxy, RA and Dec over their full range and distance in these
 const MPC_UNIT = 1 / 64;
+/** The layer the galaxy points draw on, added up apart from the scene and toned onto it. */
+export const WEB_LAYER = 2;
 const AU_PER_MPC = 3.26156e6 * AU_PER_LY;
 // light years from the Sun over which these fade in, past the Local Volume's 35 million
 const FADE_FROM = 2.5e7;
@@ -34,7 +36,7 @@ const CLUSTERS: { id: string; ra: number; dec: number; mpc: number }[] = [
   { id: 'leo', ra: 176.15, dec: 19.7, mpc: 92 },
 ];
 
-const vert = /* glsl */ `
+export const POINT_VERT = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
 uniform float size;
 void main() {
@@ -44,7 +46,7 @@ void main() {
 }
 `;
 
-const frag = /* glsl */ `
+export const POINT_FRAG = /* glsl */ `
 ${LOGDEPTH_FRAG_PARS}
 uniform float opacity;
 void main() {
@@ -81,8 +83,8 @@ export class Cosmicflows {
     const geo = new BufferGeometry();
     geo.setAttribute('position', new BufferAttribute(pos, 3));
     this.mat = new ShaderMaterial({
-      vertexShader: vert,
-      fragmentShader: frag,
+      vertexShader: POINT_VERT,
+      fragmentShader: POINT_FRAG,
       uniforms: { size: { value: 3 }, opacity: { value: 0 } },
       transparent: true,
       depthWrite: false,
@@ -90,6 +92,7 @@ export class Cosmicflows {
     });
     const points = new Points(geo, this.mat);
     points.frustumCulled = false;
+    points.layers.set(WEB_LAYER);
     this.group.add(points);
     parent.add(this.group);
   }
@@ -115,11 +118,13 @@ export class Cosmicflows {
     return Cosmicflows.presence(sunDist) > 0.3 && ly < LABELS_TO;
   }
 
+  get visible() {
+    return this.group.visible;
+  }
+
   update(sunDist: number, pixelRatio: number) {
     const k = Cosmicflows.presence(sunDist);
-    // from far out tens of thousands crowd onto the screen: dim them to keep the structure from saturating
-    const crowd = Math.min(1, Math.sqrt(2e8 / (sunDist / AU_PER_LY)));
-    this.mat.uniforms.opacity.value = 0.55 * k * crowd;
+    this.mat.uniforms.opacity.value = 0.6 * k;
     this.mat.uniforms.size.value = 2.2 * pixelRatio;
     this.group.visible = k > 0.01;
   }
