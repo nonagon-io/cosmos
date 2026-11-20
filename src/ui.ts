@@ -21,6 +21,9 @@ export interface Actions {
   craftCoastFrom(id: string): number | null;
 }
 
+// about 30 light years: past the nearest stars, where the catalogue's thinning starts to show
+const FIELD_NOTE_AU = 2e6;
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const hypot = (a: Vec, b: Vec = [0, 0, 0]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
@@ -48,6 +51,13 @@ export function setupUI(store: Store, act: Actions) {
   });
   const cam = $('cam');
   const chaseBtn = $<HTMLButtonElement>('chase');
+  const fieldNote = $<HTMLButtonElement>('field-note');
+  fieldNote.addEventListener('click', () => {
+    const r = store.regionById.get('star-field');
+    if (r) {
+      store.select({ kind: 'region', region: r });
+    }
+  });
   const toggleChase = () => {
     if (act.canChase()) {
       act.chase(!act.chase());
@@ -67,6 +77,8 @@ export function setupUI(store: Store, act: Actions) {
       cam.innerHTML = text;
       lastCam = text;
     }
+    // out among the stars, say up front that the catalogue thins with distance
+    fieldNote.hidden = distance < FIELD_NOTE_AU;
     const can = act.canChase();
     chaseBtn.hidden = !can;
     if (!can && act.chase()) {

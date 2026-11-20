@@ -126,6 +126,9 @@ export const en: Dict = {
   centerOn: 'Center on it',
   centerTip: 'Orbit and follow this body, keeping the current zoom (C key)',
   chase: 'Face direction of travel',
+  fieldNote:
+    'The stars look crowded around the Sun because the catalogue is incomplete, not because they are.',
+  more: 'More',
   chaseTip:
     'The camera sits behind the body in the center and looks where it is heading. Moons use their heading around their planet. When fast playback swings the heading too quickly, the camera holds still and catches up once it slows. Drag to change the angle (V key).',
   showOnTimeline: 'See event',
