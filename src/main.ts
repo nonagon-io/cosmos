@@ -243,7 +243,29 @@ async function start() {
         lineOfSight(e.focus),
       );
     },
-    goToView(v: View) {
+    resolveView(v: View): View {
+      if (!v.relative) {
+        return v;
+      }
+      // the body the camera is on, unless that is the Sun, whose family is the rest of the ladder
+      const f = rig.focusId;
+      const id = store.bodyById.has(f) && f !== 'sun' ? f : v.focus;
+      const r = world.minDistance(id);
+      if (v.relative === 'body') {
+        return { ...v, focus: id, distance: r * 5 };
+      }
+      const p = world.positions.get(id);
+      let far = 0;
+      for (const b of store.data.bodies) {
+        const q = b.parent === id ? world.positions.get(b.id) : undefined;
+        if (p && q) {
+          far = Math.max(far, Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]));
+        }
+      }
+      return { ...v, focus: id, distance: far > 0 ? far * 4.7 : r * 40 };
+    },
+    goToView(view: View) {
+      const v = this.resolveView(view);
       const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
       rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? lineOfSight(v.focus) : galaxyLook(v.tilt));
     },

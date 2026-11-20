@@ -1,4 +1,5 @@
-earth-moon: { name: Earth and Moon }
+body: { name: Up close }
+system: { name: With its moons }
 inner: { name: Inner planets }
 jupiter-belt: { name: Asteroid belt and Jupiter }
 outer: { name: Outer planets }

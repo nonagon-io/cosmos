@@ -1,8 +1,15 @@
 # Zoom stops in the scale panel. `distance` is the camera distance in AU, `focus` the body it centres on.
-- id: earth-moon
-  name: โลกและดวงจันทร์
+# `relative` stops work on whatever body the camera is on, or Earth; their distance here is Earth's
+- id: body
+  name: วัตถุเต็มดวง
+  focus: earth
+  distance: 0.0002
+  relative: body
+- id: system
+  name: วัตถุและบริวาร
   focus: earth
   distance: 0.012
+  relative: system
 - id: inner
   name: ดาวเคราะห์ชั้นใน
   focus: sun

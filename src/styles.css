@@ -364,52 +364,94 @@ select:focus-visible {
 }
 
 .scale {
+  position: fixed;
+  z-index: 2;
   top: calc(64px + var(--top));
   right: var(--gr);
   width: 236px;
-  padding: 14px 10px 10px 14px;
   display: flex;
   flex-direction: column;
   max-height: calc(100% - 64px - var(--top) - var(--tl-h, 120px) - 14px - var(--bottom) - 12px);
 }
 
 .scale ol {
+  --row: 40px;
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  align-content: start;
-  gap: 1px;
   position: relative;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  flex: 0 1 230px;
+  min-height: 140px;
+  overflow: hidden;
+  perspective: 520px;
+  touch-action: none;
+  user-select: none;
+  cursor: ns-resize;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* the rows fade out toward the top and bottom of the drum as well as by their tilt */
+  mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+}
+
+.scale li {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--row, 40px);
+  margin-top: calc(var(--row, 40px) / -2);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 .scale li button {
   width: 100%;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
   text-align: left;
   background: none;
   border: 0;
   border-radius: 3px;
-  padding: 3px 6px;
+  padding: 2px 8px;
   cursor: pointer;
   font-size: 13px;
+  line-height: 1.25;
   color: var(--soft);
 }
 
+.scale li button span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .scale li button:hover {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
   color: var(--fg);
 }
 
 .scale li button[aria-current="true"] {
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* a band across the front of the drum, where the current view sits */
+.scale ol::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--row, 40px);
+  margin-top: calc(var(--row, 40px) / -2);
+  border-block: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-radius: 3px;
+  pointer-events: none;
 }
 
 .scale li b {
@@ -418,10 +460,38 @@ select:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* a small glowing tag over the drum, so the floating ladder still reads as a control */
+.scale .eyebrow {
+  margin: 0 0 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, rgb(8 10 20 / 0.7));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 26px color-mix(in srgb, var(--accent) 14%, transparent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* the drum floats over the scene with no frame; the frame starts with the camera readout below it */
+.scale-foot {
+  position: static;
+  margin-top: 8px;
+  padding: 10px 10px 10px 8px;
+}
+
+.scale li button {
+  text-shadow:
+    0 0 6px #000,
+    0 0 2px #000;
+}
+
 .scale .cam {
-  margin: 10px 0 0;
-  padding: 8px 6px 0;
-  border-top: 1px solid var(--line);
+  margin: 0;
+  padding: 0 6px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -904,13 +974,48 @@ select:focus-visible {
   margin: 4px 0;
 }
 
+@media (min-width: 681px) and (max-width: 1120px) {
+  .toolbar {
+    max-width: calc(100% - var(--gl) - var(--gr) - 420px);
+    justify-content: flex-end;
+  }
+}
+
+/* on a narrow screen just a small drum under the search box, without the readout */
 @media (max-width: 980px) {
   .scale {
+    top: calc(148px + var(--top));
+    right: auto;
+    left: var(--gl);
+    width: 150px;
+  }
+
+  .scale .eyebrow,
+  .scale-foot {
+    display: none;
+  }
+
+  .scale ol {
+    --row: 28px;
+    flex-basis: 120px;
+    min-height: 120px;
+  }
+
+  .scale li button {
+    font-size: 11.5px;
+    padding: 0 6px;
+  }
+
+  .scale li b {
     display: none;
   }
 }
 
 @media (max-width: 680px), (max-height: 520px) {
+  .scale {
+    top: calc(106px + var(--top));
+  }
+
   .brand p,
   .credits,
   .stop {

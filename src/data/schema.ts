@@ -105,6 +105,8 @@ const View = z.object({
   tilt: z.number().optional(),
   // a second thing to frame along with focus; the camera centres halfway between them
   also: id.optional(),
+  // a stop for whatever body the camera is on (focus is the fallback): filling the view, or with its moons
+  relative: z.enum(['body', 'system']).optional(),
 });
 
 const Event = z.object({

@@ -6,6 +6,7 @@ import { t } from './i18n';
 import { M31_SYSTEM } from './scene/localgroup';
 import { AU_PER_LY } from './scene/stars';
 import type { Layers, Store } from './store';
+import { ScaleWheel } from './wheel';
 
 export interface Actions {
   goToBody(b: Body): void;
@@ -15,6 +16,7 @@ export interface Actions {
   goToRegion(r: Region): void;
   goToEvent(e: SpaceEvent): void;
   goToView(view: View): void;
+  resolveView(view: View): View;
   positionOf(id: string): Vec | null;
   velocityOf(id: string): Vec | null;
   camera(): { focus: string; distance: number };
@@ -45,16 +47,21 @@ export function setupUI(store: Store, act: Actions) {
   views.innerHTML = store.data.views
     .map(
       (v, i) =>
-        `<li><button type="button" data-v="${i}">${esc(v.name)}<b>${fmtDistance(v.distance)}</b></button></li>`,
+        `<li><button type="button" data-v="${i}"><span>${esc(v.name)}</span><b>${fmtDistance(v.distance)}</b></button></li>`,
     )
     .join('');
-  views.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-v]');
-    if (b) {
-      const v = store.data.views[Number(b.dataset.v)];
-      act.goToView(v);
+  const wheel = new ScaleWheel(views, store.data.views, (v) => act.goToView(v));
+  const stopDistances = [...views.querySelectorAll('b')];
+  // the stops for whatever body the camera is on change with it
+  const resolveViews = () => {
+    wheel.views = store.data.views.map((v) => act.resolveView(v));
+    for (const [i, v] of wheel.views.entries()) {
+      const text = fmtDistance(v.distance);
+      if (stopDistances[i].textContent !== text) {
+        stopDistances[i].textContent = text;
+      }
     }
-  });
+  };
   const cam = $('cam');
   const chaseBtn = $<HTMLButtonElement>('chase');
   const fieldNote = $<HTMLButtonElement>('field-note');
@@ -103,9 +110,10 @@ export function setupUI(store: Store, act: Actions) {
     }
     chaseBtn.setAttribute('aria-pressed', String(act.chase()));
     // the stop nearest in log distance is the one we are at
+    resolveViews();
     let best = -1;
     let bestD = 0.35;
-    for (const [i, v] of store.data.views.entries()) {
+    for (const [i, v] of wheel.views.entries()) {
       const d = Math.abs(Math.log10(distance / v.distance));
       const at = v.also ? `view:${v.id}` : v.focus;
       if (d < bestD && (at === focus || `region:${at}` === focus || v.focus === 'sun')) {
@@ -114,11 +122,7 @@ export function setupUI(store: Store, act: Actions) {
       }
     }
     for (const b of views.querySelectorAll<HTMLElement>('[data-v]')) {
-      const now = Number(b.dataset.v) === best;
-      if (now && b.getAttribute('aria-current') !== 'true') {
-        b.scrollIntoView({ block: 'nearest' });
-      }
-      b.setAttribute('aria-current', String(now));
+      b.setAttribute('aria-current', String(Number(b.dataset.v) === best));
     }
   };
 
@@ -342,6 +346,7 @@ export function setupUI(store: Store, act: Actions) {
     showToast,
     toggleChase,
     tick(dt: number) {
+      wheel.tick(dt, act.camera().distance);
       acc += dt;
       if (acc > 0.2) {
         acc = 0;
