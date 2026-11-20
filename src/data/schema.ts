@@ -89,6 +89,8 @@ const Region = z.object({
   model: z.boolean().optional(),
   // the 3D star field: its card explains why it thins out with distance
   stars: z.boolean().optional(),
+  // the Cosmicflows-4 galaxies: likewise
+  galaxies: z.boolean().optional(),
   // drawn from the small-body catalogue, whose dots drift from their true places away from the present
   catalog: z.boolean().optional(),
   desc: z.string(),

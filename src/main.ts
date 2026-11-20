@@ -65,28 +65,37 @@ async function start() {
   let field: StarField;
   let localGroup: LocalGroupRow[];
   let localVolume: LocalVolumeRow[];
+  let cosmicflows: Uint16Array;
   try {
-    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData] = await Promise.all([
-      json<OrbitData['moons']>('moons.json'),
-      json<OrbitData['named']>('named.json'),
-      json<OrbitData['craft']>('spacecraft.json'),
-      json<OrbitData['planets']>('planets.json'),
-      json<ElementSets>('small-bodies.json'),
-      json<StarData>('stars.json'),
-      json<LocalGroupRow[]>('localgroup.json'),
-      json<LocalVolumeRow[]>('localvolume.json'),
-      fetch(`${BASE}data/field.bin`).then((r) => {
-        if (!r.ok) {
-          throw new Error(`field.bin: ${r.status}`);
-        }
-        return r.arrayBuffer();
-      }),
-    ]);
+    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData, cfData] =
+      await Promise.all([
+        json<OrbitData['moons']>('moons.json'),
+        json<OrbitData['named']>('named.json'),
+        json<OrbitData['craft']>('spacecraft.json'),
+        json<OrbitData['planets']>('planets.json'),
+        json<ElementSets>('small-bodies.json'),
+        json<StarData>('stars.json'),
+        json<LocalGroupRow[]>('localgroup.json'),
+        json<LocalVolumeRow[]>('localvolume.json'),
+        fetch(`${BASE}data/field.bin`).then((r) => {
+          if (!r.ok) {
+            throw new Error(`field.bin: ${r.status}`);
+          }
+          return r.arrayBuffer();
+        }),
+        fetch(`${BASE}data/cosmicflows.bin`).then((r) => {
+          if (!r.ok) {
+            throw new Error(`cosmicflows.bin: ${r.status}`);
+          }
+          return r.arrayBuffer();
+        }),
+      ]);
     orbitData = { moons, named, craft, planets };
     sets = small;
     stars = starData;
     localGroup = lgData;
     localVolume = lvData;
+    cosmicflows = new Uint16Array(cfData);
     field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);
@@ -110,6 +119,7 @@ async function start() {
     field,
     localGroup,
     localVolume,
+    cosmicflows,
     (id) => pickLabel(id),
   );
   const rig = world.rig;

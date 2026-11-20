@@ -11,7 +11,7 @@ import {
   Vector3,
 } from 'three';
 import type { Vec } from '../astro/kepler';
-import { Cloud, COLORS, exposureFor, Galaxy } from './galaxy';
+import { Cloud, COLORS, exposureFor, Galaxy, minSizeAt } from './galaxy';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
 import { rng } from './particles';
 import { AU_PER_LY, eclipticDir } from './stars';
@@ -356,7 +356,9 @@ export class LocalGroup {
       s.group.position.set(...s.pos);
       const dist = Math.hypot(cam[0] - s.pos[0], cam[1] - s.pos[1], cam[2] - s.pos[2]);
       const px = (2 * s.radius * scale) / Math.max(dist, 1);
-      const grow = trueSize ? 1 : Math.max(1, SPIRAL_MIN_PX / px);
+      const grow = trueSize
+        ? 1
+        : Math.max(1, Math.max(3, SPIRAL_MIN_PX * minSizeAt(Math.hypot(...cam), 2e7, 1.5e8)) / px);
       const o = seen * (trueSize ? MathUtils.smoothstep(px, 1.5, 6) : 1);
       s.group.scale.setScalar(grow);
       for (const [c, k] of [

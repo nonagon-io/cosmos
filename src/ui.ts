@@ -24,6 +24,9 @@ export interface Actions {
 
 // about 30 light years: past the nearest stars, where the catalogue's thinning starts to show
 const FIELD_NOTE_AU = 2e6;
+// past the measured stars, until the measured galaxies
+const FIELD_NOTE_END_AU = 3e9;
+const GALAXY_NOTE_AU = 2.2e12;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const hypot = (a: Vec, b: Vec = [0, 0, 0]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -53,8 +56,10 @@ export function setupUI(store: Store, act: Actions) {
   const cam = $('cam');
   const chaseBtn = $<HTMLButtonElement>('chase');
   const fieldNote = $<HTMLButtonElement>('field-note');
+  const fieldText = fieldNote.querySelector('span') as HTMLElement;
+  let noteFor = 'star-field';
   fieldNote.addEventListener('click', () => {
-    const r = store.regionById.get('star-field');
+    const r = store.regionById.get(noteFor);
     if (r) {
       store.select({ kind: 'region', region: r });
     }
@@ -81,8 +86,13 @@ export function setupUI(store: Store, act: Actions) {
       cam.innerHTML = text;
       lastCam = text;
     }
-    // out among the stars, say up front that the catalogue thins with distance
-    fieldNote.hidden = distance < FIELD_NOTE_AU;
+    // out among the stars, and again among the galaxies, say up front that the catalogue thins with distance
+    const galaxies = distance > GALAXY_NOTE_AU;
+    fieldNote.hidden = !galaxies && (distance < FIELD_NOTE_AU || distance > FIELD_NOTE_END_AU);
+    if (noteFor !== (galaxies ? 'galaxy-field' : 'star-field')) {
+      noteFor = galaxies ? 'galaxy-field' : 'star-field';
+      fieldText.textContent = galaxies ? t.galaxyNote : t.fieldNote;
+    }
     const can = act.canChase();
     chaseBtn.hidden = !can;
     if (!can && act.chase()) {
@@ -225,6 +235,7 @@ export function setupUI(store: Store, act: Actions) {
       <h2>${esc(r.name)}</h2><p class="sub"></p>
       <dl>${rows}</dl>
       ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
+      ${r.galaxies ? `<p class="note">${esc(t.galaxyField)}</p>` : ''}
       ${at?.home ? `<p class="note">${esc(t.galaxyModel)}</p>` : ''}
       ${at?.type === 'blackhole' ? `<p class="note">${esc(t.blackholeModel)}</p>` : ''}
       ${M31_SYSTEM.has(r.id) ? `<p class="note">${esc(t.spiralModel)}</p>` : ''}

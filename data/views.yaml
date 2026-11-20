@@ -74,3 +74,13 @@
   focus: milky-way
   distance: 3000000000000
   tilt: 35
+- id: virgo
+  name: ซูเปอร์คลัสเตอร์ท้องถิ่น
+  focus: milky-way
+  distance: 15000000000000
+  tilt: 35
+- id: cosmicflows
+  name: กาแล็กซีที่วัดระยะได้
+  focus: milky-way
+  distance: 120000000000000
+  tilt: 35

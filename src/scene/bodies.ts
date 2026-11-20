@@ -351,6 +351,7 @@ export class BodyVisual {
     camDist: number,
     markerScale: number,
     trueSize = false,
+    shrink = 0,
   ) {
     for (const m of this.materials) {
       m.uniforms.sunView.value.copy(sunView);
@@ -361,7 +362,8 @@ export class BodyVisual {
     }
     const screenR = this.radiusAu * pxPerAu;
     // in true size the dot only stands in for a sphere too small to rasterise: its bright core is about a pixel
-    const px = trueSize ? 1.5 : MARKER_PX[this.body.kind] * markerScale;
+    // `shrink` takes the dot down to that pixel from out past the Kuiper belt, where holding it up only misleads
+    const px = trueSize ? 1.5 : MathUtils.lerp(MARKER_PX[this.body.kind] * markerScale, 1.5, shrink);
     // the dot fades out once the sphere itself is bigger than it
     const target = screenR > (trueSize ? 1 : px * 0.6) ? 0 : 1;
     this.markerAlpha += (target - this.markerAlpha) * 0.25;
@@ -377,6 +379,9 @@ export class BodyVisual {
       // light years out, the Sun is one star among many
       const far = MathUtils.smoothstep(Math.log10(camDist), 5.5, 7);
       glarePx = glarePx * (1 - far) + Math.max(screenR * 7, 7) * far;
+      // and past a thousand light years too faint to see at all: leave a dot for the label to point at
+      const faint = MathUtils.smoothstep(Math.log10(camDist), 7.8, 8.3);
+      glarePx = glarePx * (1 - faint) + Math.max(screenR * 7, 2.5) * faint;
       this.glare.scale.setScalar((glarePx * 2) / pxPerAu);
       // and millions of light years out it would only hide the Galaxy it is in
       (this.glare.material as SpriteMaterial).opacity =

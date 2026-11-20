@@ -18,6 +18,7 @@ import { t } from '../i18n';
 import type { Store } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
+import { Cosmicflows } from './cosmicflows';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
@@ -122,6 +123,9 @@ export class World {
   private readonly galaxy: Galaxy;
   private readonly localGroup: LocalGroup;
   private readonly localVolume: LocalVolume;
+  private readonly cosmicflows: Cosmicflows;
+  /** Galaxies other than ours, where the Solar System's dates mean nothing however close the camera is. */
+  private readonly otherGalaxies: Set<string>;
   // Sgr A*'s disk is ray traced per pixel, which filling the screen can cost more than a slow GPU has. It gets a
   // pixel budget, past which it is drawn smaller and scaled up; the budget grows while frames keep up and shrinks
   // while they don't, so a fast GPU ends up at full resolution.
@@ -148,6 +152,7 @@ export class World {
     field: StarField,
     localGroup: LocalGroupRow[],
     localVolume: LocalVolumeRow[],
+    cosmicflows: Uint16Array,
     onPick: (id: string) => void,
   ) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -227,6 +232,10 @@ export class World {
     });
     const home = this.deepSky.find((o) => store.regionById.get(o.id.slice(7))?.at?.home);
     this.localGroup = new LocalGroup(this.world, localGroup, spirals, home?.base ?? [0, 0, 0]);
+    this.otherGalaxies = new Set(
+      store.data.regions.filter((r) => r.at?.type === 'galaxy' && !r.at.home).map((r) => `region:${r.id}`),
+    );
+    this.cosmicflows = new Cosmicflows(this.world, cosmicflows);
     this.localVolume = new LocalVolume(
       this.world,
       localVolume,
@@ -324,6 +333,7 @@ export class World {
     this.galaxy.setTime(this.store.myr);
     this.localGroup.setTime(shift, drift, this.store.myr);
     this.localVolume.setTime(shift);
+    this.cosmicflows.setTime(shift);
     for (const o of this.deepSky) {
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));
@@ -366,7 +376,7 @@ export class World {
   frame(dt: number) {
     const { store } = this;
     // far enough out, time on the scale of days stands still: switch the timeline to millions of years
-    const out = this.rig.distance / AU_PER_LY;
+    const out = this.otherGalaxies.has(this.rig.focusId) ? Infinity : this.rig.distance / AU_PER_LY;
     if (store.deep ? out < DEEP_OUT : out > DEEP_IN) {
       store.setDeep(!store.deep);
     }
@@ -391,6 +401,8 @@ export class World {
     const sunView = v3.set(-focus[0], -focus[2], focus[1]).applyMatrix4(view).clone();
     const selectedId = store.selection?.kind === 'body' ? store.selection.body.id : null;
     const markerScale = Math.min(1.25, Math.max(0.85, this.height / 900));
+    // past the Kuiper belt the planets are drawn true to size, as dots too small to hold up
+    const shrink = MathUtils.smoothstep(Math.log10(Math.max(1e-9, Math.hypot(cx, cy, cz))), 2.3, 3);
 
     this.projected.clear();
     for (const [id, vis] of this.visuals) {
@@ -408,7 +420,21 @@ export class World {
       vis.setCloudDrift(day);
       const dist = Math.max(1e-12, Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz));
       const pxPerAu = this.rig.pxPerAu(dist, this.height);
-      const r = vis.update(sunView, view, pxPerAu, camDist, markerScale, layers.trueSize);
+      // from light years out every planet, moon and craft lands within a pixel or two of the Sun, and their
+      // markers, each held a few pixels wide, pile up into a disk around it
+      if (id !== 'sun' && id !== this.rig.focusId && id !== selectedId && Math.hypot(...p) * pxPerAu < 3) {
+        vis.group.visible = false;
+        continue;
+      }
+      const r = vis.update(
+        sunView,
+        view,
+        pxPerAu,
+        camDist,
+        markerScale,
+        layers.trueSize,
+        vis.body.id === 'sun' ? 0 : shrink,
+      );
       // screen position, for labels and picking
       v3.set(p[0] - focus[0], p[2] - focus[2], -(p[1] - focus[1])).project(cam);
       if (v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2) {
@@ -436,7 +462,7 @@ export class World {
       this.height,
       layers.trueSize,
     );
-    this.oort.update(pr, layers.oort, camDist, layers.trueSize);
+    this.oort.update(pr, layers.oort, sunDist, layers.trueSize);
     this.heliosphere.update(layers.oort || layers.spacecraft, camDist);
     this.tails.update(
       (id) => this.positions.get(id),
@@ -459,6 +485,7 @@ export class World {
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
+    this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
@@ -482,7 +509,10 @@ export class World {
       this.sgr.quad.layers.set(this.sgr.group.visible && this.holeScale < 0.95 ? HOLE_LAYER : 0);
     }
     // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
-    this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
+    // the measured stars reach only a few thousand light years, so from out where the whole Galaxy shows they
+    // would only pile up into a blob at the Sun
+    const starsGone = MathUtils.smoothstep(Math.log10(sunDist / AU_PER_LY), 4.3, 4.9);
+    this.stars3d.update(1, sunDist, camDist, (1 - 0.75 * galaxy) * (1 - starsGone));
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(cam.quaternion);
@@ -714,7 +744,8 @@ export class World {
       }
     }
     // the brighter dwarf galaxies, once out at the scale of the Local Group
-    if (Math.hypot(...this.camPos) > LOCAL_GROUP_LABELS * AU_PER_LY && Galaxy.presence(camDist) > 0.3) {
+    const sunLy = Math.hypot(...this.camPos) / AU_PER_LY;
+    if (sunLy > LOCAL_GROUP_LABELS && sunLy < 3e7 && Galaxy.presence(camDist) > 0.3) {
       for (const d of this.localGroup.named) {
         const s = this.screenOf(this.localGroup.placeOf(d));
         if (s) {
@@ -731,8 +762,30 @@ export class World {
         }
       }
     }
+    // the big clusters, once the camera is out among them
+    if (Cosmicflows.labelled(Math.hypot(...this.camPos))) {
+      for (const c of this.cosmicflows.clusters) {
+        const s = this.screenOf(this.cosmicflows.placeOf(c.at));
+        if (s) {
+          entries.push({
+            id: `cf:${c.id}`,
+            text: t.clusters[c.id as keyof typeof t.clusters],
+            x: s.x,
+            y: s.y,
+            priority: 60,
+            color: '#e8d9b8',
+            className: 'region',
+            offset: -((t.clusters[c.id as keyof typeof t.clusters].length * 6.6) / 2),
+          });
+        }
+      }
+    }
     // the brightest galaxies past the Local Group, once out among them
-    if (LocalVolume.labelled(Math.hypot(...this.camPos)) && Galaxy.presence(camDist) > 0.3) {
+    if (
+      LocalVolume.labelled(Math.hypot(...this.camPos)) &&
+      Galaxy.presence(camDist) > 0.3 &&
+      Math.hypot(...this.camPos) < 1.2e8 * AU_PER_LY
+    ) {
       for (const d of this.localVolume.named) {
         const s = this.screenOf(this.localVolume.placeOf(d.at));
         if (s) {

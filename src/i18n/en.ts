@@ -117,9 +117,23 @@ export const en: Dict = {
   blackholeModel:
     'A film-style simulation: the disk is traced with light bending around the black hole, so its far side shows above and below the shadow. The shadow is the real size the EHT measured, and the disk is tilted so that from Earth it looks roughly like the EHT image, brighter where the gas moves toward us. The real Sgr A* is fed so little gas that it has no bright disk like this. The gas turns at its real speed with the timeline: the inner edge laps every 33 minutes or so, so play at 1 hour/s to see it move; faster than that it smears into an even glow, like a long exposure. The S-star orbits are the measured ones, though the depth along our line of sight is less certain than the rest.',
   galaxyModel:
-    "Simulated: nobody has seen the Milky Way from outside, because we are in it. From above you see an artist's painting (NASA/JPL-Caltech/ESO/R. Hurt) based on Spitzer and VISTA data, placed so the Sun is the measured 26,700 light years from the centre. From the side it turns into points from a model whose arms on our side follow maser distances; the far side, hidden behind dust, carries the same arms on. Whether the Galaxy has two major arms or four is still argued, so the painting and the model don't agree on every arm. The points are not real stars. Zoomed out to the Galaxy, the timeline counts millions of years: the Sun goes round the centre about once in 220 million years and bobs through the plane every 70 million or so. The spiral pattern is a wave that turns slower than the Sun (how much slower is still argued), so it turns as a whole rather than faster inside like the stars themselves. Orbits hundreds of millions of years back are estimates, nobody knows what the arms looked like then, and the Magellanic Clouds are held still though they move too.",
+    'Simulated: nobody has seen the Milky Way from outside, because we are in it. This is a model built from points, like the other galaxies here, with the Sun the measured 26,700 light years from the centre. The arms on our side follow maser distances; the far side, hidden behind dust, carries the same arms on. Whether the Galaxy has two major arms or four is still argued. The points are not real stars. Zoomed out to the Galaxy, the timeline counts millions of years: the Sun goes round the centre about once in 220 million years and bobs through the plane every 70 million or so. The spiral pattern is a wave that turns slower than the Sun (how much slower is still argued), so it turns as a whole rather than faster inside like the stars themselves. Orbits hundreds of millions of years back are estimates, nobody knows what the arms looked like then, and the Magellanic Clouds are held still though they move too.',
+  clusters: {
+    virgo: 'Virgo Cluster',
+    fornax: 'Fornax Cluster',
+    centaurus: 'Centaurus Cluster',
+    hydra: 'Hydra Cluster',
+    norma: 'Norma Cluster',
+    perseus: 'Perseus Cluster',
+    coma: 'Coma Cluster',
+    leo: 'Leo Cluster',
+  },
   spiralModel:
     "Simulated: built from points like the Milky Way. The size, distance and tilt on our sky are measured, so from Earth it leans the way it does in photographs, but the arms are only sketched to look like them. The 170 small fuzzy dwarf galaxies around come from the Local Volume Database (Pace et al. 2024, November 2026 release), which includes recent discoveries, at their measured positions, distances and sizes; very faint ones are still being found. On the million-year timeline Andromeda and its satellites fall toward the Milky Way's centre at the measured 109 km/s, and the spiral patterns turn as a whole, Andromeda's once in about 350 million years and Triangulum's in about 590. Nobody has measured their pattern speeds, so they are set at 70% of the orbital speed, the Milky Way's share at the Sun. Andromeda's sideways motion is still too uncertain to include. The two will start to merge in some 4 to 5 billion years, well past this timeline.",
+  galaxyField:
+    "The directions on the sky are precise, but each galaxy's distance can be off by about 20%. Used as they are, clusters would stretch into long streaks pointing at us, so galaxies in one group all take the group's mean distance; lone galaxies keep their error, which blurs the picture a little along our line of sight. The empty band across it is where the Milky Way's own dust and stars hide what lies behind (the zone of avoidance), not empty space. And galaxies thin out with distance because only the brighter ones could be measured, not because the universe empties.",
+  galaxyNote:
+    'Distances can be off by about 20%, and it thins out with distance because the data is incomplete.',
   starField:
     'Every star is at its real position, from distances measured by parallax (the HYG database). But the catalogue is only complete for stars bright enough to measure from Earth, so farther out only the very bright ones are left. That makes the stars look crowded around the Sun and thinning out, which is not true; stars in this part of the galaxy are spread about evenly. Distances beyond about a thousand light years can be well off. Seen from outside the Solar System, the stars are brightened as a long exposure would, or you would hardly see any.',
   nebulaGlow:
@@ -198,5 +212,5 @@ export const en: Dict = {
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',
   loadError: 'Could not load the orbit data. Try reloading the page.',
   credits:
-    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Milky Way: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0) · Dwarf galaxies: Local Volume Database (Pace 2024) · Nearby galaxies: UNGC (Karachentsev 2013), PGC (Paturel 2003)',
+    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Dwarf galaxies: Local Volume Database (Pace 2024) · Nearby galaxies: UNGC (Karachentsev 2013), PGC (Paturel 2003) · Galaxy distances: Cosmicflows-4 (Tully 2023)',
 };

@@ -3,12 +3,9 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  DoubleSide,
   Group,
   MathUtils,
   Matrix4,
-  Mesh,
-  MeshBasicMaterial,
   Points,
   ShaderMaterial,
   type Sprite,
@@ -20,7 +17,6 @@ import type { Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
 import { rng } from './particles';
 import { AU_PER_LY } from './stars';
-import { texture } from './textures';
 
 // Measured: the Sun's distance from the centre (GRAVITY 2019) and its height above the plane (Bennett & Bovy 2019)
 const R0 = 8.178;
@@ -38,14 +34,18 @@ const ARM_OMEGA = (20 * KMS) / 1000;
 const BOB = (2 * Math.PI) / 70;
 const W_SUN = 7.25 * KMS;
 
-// The NASA/JPL-Caltech/ESO/R. Hurt painting (eso1339g), seen from the north galactic pole with longitude 0
-// straight up. Measured on its annotated twin at 1024 px: the centre is at (512, 510) and the Sun 196 px
-// below it, so that gap is set to R0.
-const PAINT = { cx: 512, cy: 510, sunY: 706, size: 1024 };
 // on-screen width the satellite galaxies, and from far enough out the Galaxy itself, are held at, unless true
 // size is on
 const DWARF_MIN_PX = 12;
 const GALAXY_MIN_PX = 16;
+
+/**
+ * How much of a minimum on-screen size to keep, with the camera `sunDist` AU from the Sun, for a galaxy
+ * held up between `from` and `to` light years out: past that it is one among many and drawn true to size.
+ */
+export function minSizeAt(sunDist: number, from: number, to: number) {
+  return 1 - MathUtils.smoothstep(Math.log10(sunDist / AU_PER_LY), Math.log10(from), Math.log10(to));
+}
 const GALAXY_RADIUS = 50000 * AU_PER_LY;
 
 interface Dwarf {
@@ -248,12 +248,9 @@ export const exposureFor = (px: number) => MathUtils.clamp(250 / px, 1, 6);
 export class Galaxy {
   private readonly stars: Cloud;
   private readonly haze: Cloud;
-  private readonly paint: MeshBasicMaterial;
-  /** 1 while the painting shows, 0 for the points alone. */
-  paintWeight = 0;
   private readonly normal: Vec;
   private readonly centre: Vec;
-  /** Holds the model and the painting, turned and shifted for the time on the Galaxy's timeline. */
+  /** Holds the model, turned and shifted for the time on the Galaxy's timeline. */
   private readonly frame = new Group();
   private shift: Vec = [0, 0, 0];
   private myr = 0;
@@ -357,29 +354,6 @@ export class Galaxy {
       });
     }
 
-    // the painting, laid in the galactic plane
-    const k = R0 / (PAINT.sunY - PAINT.cy);
-    const at = (px: number, py: number) => [
-      ...toEcliptic((PAINT.sunY - py) * k, -(px - PAINT.cx) * k, -Z_SUN),
-    ];
-    const s = PAINT.size;
-    const pg = new BufferGeometry();
-    pg.setAttribute(
-      'position',
-      new BufferAttribute(new Float32Array([...at(0, s), ...at(s, s), ...at(s, 0), ...at(0, 0)]), 3),
-    );
-    pg.setAttribute('uv', new BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
-    pg.setIndex([0, 1, 2, 0, 2, 3]);
-    this.paint = new MeshBasicMaterial({
-      map: texture('milkyway_hurt'),
-      transparent: true,
-      depthWrite: false,
-      blending: AdditiveBlending,
-      side: DoubleSide,
-    });
-    const mesh = new Mesh(pg, this.paint);
-    mesh.frustumCulled = false;
-    this.frame.add(mesh);
     this.frame.matrixAutoUpdate = false;
     parent.add(this.frame);
     const n = toEcliptic(0, 0, 1);
@@ -434,26 +408,17 @@ export class Galaxy {
     const lg = Math.log10(sunDist / AU_PER_LY);
     // the glow only reads as a glow from well outside; from inside it breaks into blobs
     const h = k * MathUtils.smoothstep(lg, 3.9, 4.6);
-    // the painting is flat: show it when looking down on the disk from well outside, the points edge on
     const c = this.centre;
     const s = this.shift;
     const d = [cam[0] - c[0] + s[0], cam[1] - c[1] + s[1], cam[2] - c[2] + s[2]];
-    const tilt =
-      Math.abs(d[0] * this.normal[0] + d[1] * this.normal[1] + d[2] * this.normal[2]) / Math.hypot(...d);
-    // and fade it on the way in to the centre, where its painted bar would fill the screen
-    const fromCentre = Math.log10(Math.hypot(...d) / AU_PER_LY);
-    const w =
-      MathUtils.smoothstep(tilt, 0.2, 0.55) *
-      MathUtils.smoothstep(lg, 4.0, 4.6) *
-      MathUtils.smoothstep(fromCentre, 4.6, 5.15);
-    this.paint.opacity = w;
-    this.paintWeight = w;
     const px = (2 * GALAXY_RADIUS * scale) / Math.max(Math.hypot(...d), 1);
-    this.grow = trueSize ? 1 : Math.max(1, GALAXY_MIN_PX / px);
+    // among the galaxies of the Local Volume, it shrinks to their size
+    const minPx = Math.max(3, GALAXY_MIN_PX * minSizeAt(sunDist, 2e7, 1.5e8));
+    this.grow = trueSize ? 1 : Math.max(1, minPx / px);
     this.placeFrame();
     for (const [c, o] of [
-      [this.stars, k * (1 - 0.75 * w)],
-      [this.haze, h * (1 - w)],
+      [this.stars, k],
+      [this.haze, h],
     ] as const) {
       c.mat.uniforms.scale.value = scale;
       c.mat.uniforms.grow.value = this.grow;
@@ -463,7 +428,8 @@ export class Galaxy {
     for (const d of this.dwarfs) {
       const dist = Math.hypot(cam[0] - d.pos[0], cam[1] - d.pos[1], cam[2] - d.pos[2]);
       const px = (2 * d.radius * scale) / Math.max(dist, 1);
-      const grow = trueSize ? 1 : Math.max(1, DWARF_MIN_PX / px);
+      // the Clouds are held up to be found around the Galaxy, not once out among other galaxies
+      const grow = trueSize ? 1 : Math.max(1, (DWARF_MIN_PX * minSizeAt(sunDist, 3e5, 2e6)) / px);
       // at true size, a galaxy only a pixel or two across is not worth drawing
       // and zoomed in on something small, like Sgr A*, galaxies 160,000 light years off are out of the picture
       const seen = k * Galaxy.presence(zoom) * (trueSize ? MathUtils.smoothstep(px, 1.5, 6) : 1);

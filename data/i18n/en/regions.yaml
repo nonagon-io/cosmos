@@ -38,3 +38,5 @@ andromeda:
   desc: The largest spiral in the Local Group, about 2.5 million light years away and the farthest thing easily seen with the naked eye, an oval smudge in Andromeda. It has around a trillion stars, several times the Milky Way's, and it is heading toward us. The light you see tonight left it before there were humans.
 triangulum:
   desc: The third-largest spiral in the Local Group after Andromeda and the Milky Way, about 2.7 million light years away and probably a satellite of Andromeda. Its loose arms are full of pink star-forming regions. Under a truly dark sky some people can see it with the naked eye.
+galaxy-field:
+  desc: About 55,000 galaxies with measured distances from the Cosmicflows-4 catalogue (Tully et al. 2023), out to some 2.6 billion light years. Each point is a whole galaxy of billions of stars. Galaxies are not spread evenly but gather into clusters, sheets and filaments hundreds of millions of light years long, with great voids between. The Milky Way sits on the outskirts of the Virgo Supercluster.

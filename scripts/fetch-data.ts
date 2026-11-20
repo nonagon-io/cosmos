@@ -1,6 +1,6 @@
 // Downloads orbits, spacecraft paths, stars and textures into public/. Run with `npm run fetch-data`.
 // Pass the names of steps to run only those: `npm run fetch-data -- moons stars`.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..', 'public');
@@ -656,8 +656,6 @@ const OTHER_TEXTURES: Record<string, string> = {
   // PIA19866, grey, sub-Pluto longitude at the center
   charon_newhorizons:
     'https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia19/pia19866/PIA19866.jpg?w=2048',
-  // NASA/JPL-Caltech/ESO/R. Hurt (eso1339g); resized to 2048 px when committed
-  milkyway_hurt: 'https://cdn.eso.org/images/large/eso1339g.jpg',
 };
 
 async function textures() {
@@ -866,6 +864,51 @@ async function localVolume() {
   save('localvolume.json', out);
 }
 
+// ---- Cosmicflows-4 ----
+
+// The 55,877 galaxies with measured distances in Cosmicflows-4 (Tully et al. 2023), out to about 800 Mpc. A
+// single galaxy's distance is off by 20% or so, which would smear every cluster into a long streak pointing
+// at us, so galaxies in one group (the catalogue's 1PGC) all take the group's error-weighted mean. Those
+// already in the Local Volume are left out. Each galaxy is three uint16: RA and Dec scaled to the full range,
+// and distance in units of COSMICFLOWS_MPC.
+const COSMICFLOWS_MPC = 1 / 64;
+
+async function cosmicflows() {
+  console.log('cosmicflows');
+  const rows = (await vizier('J/ApJ/944/94/table2')).filter((r) => r.DM);
+  const groups = new Map<string, { sum: number; w: number }>();
+  for (const r of rows) {
+    const w = 1 / Math.max(Number(r.e_DM), 0.05) ** 2;
+    const g = groups.get(r['1PGC']) ?? { sum: 0, w: 0 };
+    g.sum += Number(r.DM) * w;
+    g.w += w;
+    groups.set(r['1PGC'], g);
+  }
+  const near = (JSON.parse(readFileSync(join(DATA, 'localvolume.json'), 'utf8')) as number[][]).map(
+    ([, ra, dec]) => [ra, dec],
+  );
+  const out: number[] = [];
+  for (const r of rows) {
+    const ra = Number(r.RAJ2000);
+    const dec = Number(r.DEJ2000);
+    const g = groups.get(r['1PGC']);
+    const mpc = 10 ** (((g ? g.sum / g.w : Number(r.DM)) - 25) / 5);
+    const dup = near.some(
+      ([a, d]) => Math.abs(d - dec) < 0.03 && Math.abs(a - ra) * Math.cos((dec * Math.PI) / 180) < 0.03,
+    );
+    if (dup || mpc / COSMICFLOWS_MPC > 65535) {
+      continue;
+    }
+    out.push(
+      Math.round((ra / 360) * 65535),
+      Math.round(((dec + 90) / 180) * 65535),
+      Math.round(mpc / COSMICFLOWS_MPC),
+    );
+  }
+  writeFileSync(join(DATA, 'cosmicflows.bin'), Buffer.from(new Uint16Array(out).buffer));
+  console.log(`  ${out.length / 3} galaxies`);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -875,6 +918,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   stars,
   localGroup,
   localVolume,
+  cosmicflows,
   textures,
 };
 const pick = process.argv.slice(2);
