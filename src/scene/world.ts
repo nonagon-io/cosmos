@@ -573,14 +573,14 @@ export class World {
     this.renderer.render(this.sky, this.skyCamera);
     this.renderer.clearDepth();
     this.renderer.render(this.scene, cam);
-    if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
-      this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
-    }
     if (this.cosmicflows.visible || this.surveys.some((s) => s.visible)) {
       // zoomed in among the galaxies they spread out over the screen, few to a pixel: expose for longer
       const zoomLy = this.rig.distance / AU_PER_LY;
       this.webPass.gain.value = 4 * MathUtils.clamp((WEB_EXPOSE_LY / zoomLy) ** 0.7, 1, 30);
       this.webPass.render(this.renderer, this.scene, cam, WEB_LAYER, 1);
+    }
+    if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
+      this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
     }
 
     if (layers.labels) {

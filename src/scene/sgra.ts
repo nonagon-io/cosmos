@@ -270,6 +270,9 @@ export class SgrA {
     const half = QUAD_RS * RS;
     this.quad = new Mesh(new PlaneGeometry(half * 2, half * 2), this.disk);
     this.quad.frustumCulled = false;
+    // the shadow is black and opaque: drawn after everything else, so nothing behind it shows through. Only
+    // the camera could be nearer to it than the stars and the Galaxy are.
+    this.quad.renderOrder = 1000;
     this.group.add(this.quad);
 
     for (const s of S_STARS) {
