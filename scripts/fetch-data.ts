@@ -656,8 +656,8 @@ const OTHER_TEXTURES: Record<string, string> = {
   // PIA19866, grey, sub-Pluto longitude at the center
   charon_newhorizons:
     'https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia19/pia19866/PIA19866.jpg?w=2048',
-  // EHT Collaboration via ESO (eso2208), north up, east left; resized to 1024 px when committed
-  sgra_eht: 'https://cdn.eso.org/images/screen/eso2208-eht-mwa.jpg',
+  // NASA/JPL-Caltech/ESO/R. Hurt (eso1339g); resized to 2048 px when committed
+  milkyway_hurt: 'https://cdn.eso.org/images/large/eso1339g.jpg',
 };
 
 async function textures() {

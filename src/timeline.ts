@@ -211,7 +211,7 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
     shownMinute = minute;
     dMain.textContent = t.date(d);
     // the clock only means something when time moves slowly enough to read it
-    const slow = !store.playing || store.speedIndex <= 2;
+    const slow = !store.playing || SPEEDS[store.speedIndex] <= 1;
     dAlt.textContent = [t.dateAlt(d), slow ? t.clock(d) : ''].filter(Boolean).join(' · ');
     if (document.activeElement !== slider) {
       slider.value = String(Math.round(scale.toPos(day) * SLIDER_MAX));

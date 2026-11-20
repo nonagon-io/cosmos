@@ -27,7 +27,7 @@ interface Events {
 type Handler<T> = (v: T) => void;
 
 /** Days per second of playback. */
-export const SPEEDS = [1 / 86400, 1 / 24, 1, 7, 30.44, 365.25, 3652.5] as const;
+export const SPEEDS = [1 / 86400, 15 / 1440, 30 / 1440, 1 / 24, 1, 7, 30.44, 365.25, 3652.5] as const;
 
 export class Store {
   readonly bodyById = new Map<string, Body>();
@@ -35,7 +35,7 @@ export class Store {
   readonly start: number;
   readonly end: number;
   day: number;
-  speedIndex = 3;
+  speedIndex = SPEEDS.indexOf(7);
   reverse = false;
   playing = false;
   stopAtEvents = false;

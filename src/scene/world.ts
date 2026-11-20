@@ -376,13 +376,7 @@ export class World {
     // the sky sphere only holds stars with no distance; once we leave the Sun they would be in the wrong place
     this.skyMat.uniforms.opacity.value = 1 - Stars3D.presence(camDist);
     const galaxy = Galaxy.presence(sunDist);
-    this.galaxy.update(this.height, cam.fov, sunDist);
-    if (this.sgr) {
-      const g = this.sgr.group.position;
-      this.sgr.update(day, [cx - g.x, cy - g.y, cz - g.z]);
-    }
-    // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
-    this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
+    // set before the Galaxy, which scales and fades the glows of satellite galaxies on top
     for (const o of this.deepSky) {
       if (o.glow) {
         const d = Math.hypot(o.pos[0] - cx, o.pos[1] - cy, o.pos[2] - cz);
@@ -390,6 +384,14 @@ export class World {
         (o.glow.material as SpriteMaterial).opacity = 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
       }
     }
+    this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
+    if (this.sgr) {
+      const g = this.sgr.group.position;
+      const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
+      this.sgr.update(day, toCam, this.rig.pxPerAu(Math.hypot(...toCam), this.height), layers.trueSize);
+    }
+    // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
+    this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(cam.quaternion);
@@ -523,6 +525,10 @@ export class World {
       const far =
         reg.at?.type === 'galaxy' ? reg.view * 20 : reg.at?.type === 'blackhole' ? 1e9 : reg.view * 6;
       if (d < (reg.at?.type === 'blackhole' ? 0 : reg.view / 9) || d > far) {
+        continue;
+      }
+      // nor while zoomed in on something small, as the galaxies themselves fade then
+      if (reg.at?.type === 'galaxy' && !reg.at.home && Galaxy.presence(camDist) < 0.3) {
         continue;
       }
       if (at) {

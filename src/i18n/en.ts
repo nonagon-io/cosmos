@@ -52,7 +52,17 @@ export const en: Dict = {
   nextEvent: 'Next event',
   stopAtEvents: 'Stop at major events',
   speed: 'Speed',
-  speeds: ['Real time', '1 hr/s', '1 day/s', '1 week/s', '1 month/s', '1 yr/s', '10 yr/s'],
+  speeds: [
+    'Real time',
+    '15 min/s',
+    '30 min/s',
+    '1 hr/s',
+    '1 day/s',
+    '1 week/s',
+    '1 month/s',
+    '1 yr/s',
+    '10 yr/s',
+  ],
   dateSlider: 'Date',
 
   search: 'Search',
@@ -96,9 +106,9 @@ export const en: Dict = {
     ['outer', 'Outer Arm'],
   ]),
   blackholeModel:
-    "Seen from Earth's direction, the black hole is the real EHT image (2022) at its real size: radio light given false colour, blurred by the telescope's resolution and averaged over several nights. No eye could see it like this. Turn to look from any other side and it becomes a simulation, since nobody has seen it from there. The S-star orbits are the measured ones, though the depth along our line of sight is less certain than the rest.",
+    'A film-style simulation: the disk is traced with light bending around the black hole, so its far side shows above and below the shadow. The shadow is the real size the EHT measured, and the disk is tilted so that from Earth it looks roughly like the EHT image, brighter where the gas moves toward us. The real Sgr A* is fed so little gas that it has no bright disk like this. The gas turns at its real speed with the timeline: the inner edge laps every 33 minutes or so, so play at 1 hour/s to see it move; faster than that it smears into an even glow, like a long exposure. The S-star orbits are the measured ones, though the depth along our line of sight is less certain than the rest.',
   galaxyModel:
-    "Simulated: nobody has seen the Milky Way from outside, because we are in it. This shape is built from the models astronomers have measured. What is real is its size, the Sun's distance from the centre (about 26,700 light years), the tilt of the galactic plane on our sky, and the spiral arms on our side, placed by maser distances. The far side, hidden behind dust, carries the same arms on. The points are not real stars.",
+    "Simulated: nobody has seen the Milky Way from outside, because we are in it. From above you see an artist's painting (NASA/JPL-Caltech/ESO/R. Hurt) based on Spitzer and VISTA data, placed so the Sun is the measured 26,700 light years from the centre. From the side it turns into points from a model whose arms on our side follow maser distances; the far side, hidden behind dust, carries the same arms on. Whether the Galaxy has two major arms or four is still argued, so the painting and the model don't agree on every arm. The points are not real stars.",
   starField:
     'Every star is at its real position, from distances measured by parallax (the HYG database). But the catalogue is only complete for stars bright enough to measure from Earth, so farther out only the very bright ones are left. That makes the stars look crowded around the Sun and thinning out, which is not true; stars in this part of the galaxy are spread about evenly. Distances beyond about a thousand light years can be well off. Seen from outside the Solar System, the stars are brightened as a long exposure would, or you would hardly see any.',
   nebulaGlow:
@@ -177,5 +187,5 @@ export const en: Dict = {
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',
   loadError: 'Could not load the orbit data. Try reloading the page.',
   credits:
-    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Sgr A*: EHT Collaboration/ESO (CC BY 4.0)',
+    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Milky Way: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0)',
 };

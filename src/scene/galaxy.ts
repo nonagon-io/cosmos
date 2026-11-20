@@ -3,21 +3,40 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  type Group,
+  DoubleSide,
+  Group,
   MathUtils,
+  Mesh,
+  MeshBasicMaterial,
   Points,
   ShaderMaterial,
+  type Sprite,
+  type SpriteMaterial,
   Vector2,
 } from 'three';
 import type { Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
 import { rng } from './particles';
 import { AU_PER_LY } from './stars';
+import { texture } from './textures';
 
 // Measured: the Sun's distance from the centre (GRAVITY 2019) and its height above the plane (Bennett & Bovy 2019)
 const R0 = 8.178;
 const Z_SUN = 0.0208;
 const LY_PER_KPC = 3261.56;
+
+// The NASA/JPL-Caltech/ESO/R. Hurt painting (eso1339g), seen from the north galactic pole with longitude 0
+// straight up. Measured on its annotated twin at 1024 px: the centre is at (512, 510) and the Sun 196 px
+// below it, so that gap is set to R0.
+const PAINT = { cx: 512, cy: 510, sunY: 706, size: 1024 };
+// on-screen width the satellite galaxies are held at, unless true size is on
+const DWARF_MIN_PX = 28;
+
+interface Dwarf {
+  pos: Vec;
+  radius: number;
+  glow: Sprite | null;
+}
 
 // Spiral arms as log spirals fitted to maser parallaxes (Reid et al. 2014): reference radius in kpc, azimuth in
 // degrees from the Sun's direction as seen from the centre, pitch angle in degrees, and how strongly each shows.
@@ -84,6 +103,7 @@ ${LOGDEPTH_VERT_PARS}
 attribute vec3 aColor;
 attribute float aSize;
 uniform float scale;
+uniform float grow;
 uniform float pxMin;
 uniform float pxMax;
 uniform float gain;
@@ -93,7 +113,7 @@ varying float vFade;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   // aSize is a size in AU; on screen it shrinks with distance like anything real
-  float px = aSize * scale / max(-mv.z, 1.0);
+  float px = aSize * grow * scale / max(-mv.z, 1.0);
   gl_PointSize = clamp(px, pxMin, pxMax);
   // a point held up at the minimum size spreads the same light over more pixels
   float f = min(px / pxMin, 1.0);
@@ -150,6 +170,7 @@ class Cloud {
       fragmentShader: frag,
       uniforms: {
         scale: { value: 1 },
+        grow: { value: 1 },
         opacity: { value: 0 },
         pxMin: { value: pxMin },
         pxMax: { value: pxMax },
@@ -173,9 +194,15 @@ class Cloud {
 export class Galaxy {
   private readonly stars: Cloud;
   private readonly haze: Cloud;
+  private readonly paint: MeshBasicMaterial;
+  /** 1 while the painting shows, 0 for the points alone. */
+  paintWeight = 0;
+  private readonly normal: Vec;
+  private readonly centre: Vec;
+  private readonly dwarfs: (Dwarf & { group: Group; stars: Cloud; haze: Cloud; glowSize: number })[] = [];
 
   /** `dwarfs` are satellite galaxies, drawn as loose clouds of points around their real positions. */
-  constructor(parent: Group, dwarfs: { pos: Vec; radius: number }[] = []) {
+  constructor(parent: Group, dwarfs: Dwarf[] = []) {
     const rand = rng(2019);
     const gauss = () => {
       const u = Math.max(rand(), 1e-9);
@@ -245,35 +272,113 @@ export class Galaxy {
       }
     }
 
+    // each satellite in its own group around its centre, so it can be scaled up to stay visible
     for (const d of dwarfs) {
+      const ds = { pos: [] as number[], col: [] as number[], size: [] as number[] };
+      const dh = { pos: [] as number[], col: [] as number[], size: [] as number[] };
       const n = Math.round(4000 * (d.radius / (7000 * ly)));
       for (let i = 0; i < n; i++) {
         const s = d.radius * 0.45;
-        const p: Vec = [d.pos[0] + gauss() * s, d.pos[1] + gauss() * s, d.pos[2] + gauss() * s * 0.6];
-        push(star, p, COLORS.arm, 60 * ly, 0.5);
+        const p: Vec = [gauss() * s, gauss() * s, gauss() * s * 0.6];
+        push(ds, p, COLORS.arm, 60 * ly, 0.5);
         if (i % 3 === 0) {
-          push(haze, p, COLORS.disk, 1500 * ly, 0.12);
+          push(dh, p, COLORS.disk, 1500 * ly, 0.12);
         }
       }
+      const group = new Group();
+      group.position.set(...d.pos);
+      parent.add(group);
+      this.dwarfs.push({
+        ...d,
+        group,
+        stars: new Cloud(group, ds.pos, ds.col, ds.size, 1.5, 4, 0.45),
+        haze: new Cloud(group, dh.pos, dh.col, dh.size, 1.5, 120, 0.6, new Vector2(6, 24)),
+        glowSize: d.glow?.scale.x ?? 0,
+      });
     }
+
+    // the painting, laid in the galactic plane
+    const k = R0 / (PAINT.sunY - PAINT.cy);
+    const at = (px: number, py: number) => [
+      ...toEcliptic((PAINT.sunY - py) * k, -(px - PAINT.cx) * k, -Z_SUN),
+    ];
+    const s = PAINT.size;
+    const pg = new BufferGeometry();
+    pg.setAttribute(
+      'position',
+      new BufferAttribute(new Float32Array([...at(0, s), ...at(s, s), ...at(s, 0), ...at(0, 0)]), 3),
+    );
+    pg.setAttribute('uv', new BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+    pg.setIndex([0, 1, 2, 0, 2, 3]);
+    this.paint = new MeshBasicMaterial({
+      map: texture('milkyway_hurt'),
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      side: DoubleSide,
+    });
+    const mesh = new Mesh(pg, this.paint);
+    mesh.frustumCulled = false;
+    parent.add(mesh);
+    const n = toEcliptic(0, 0, 1);
+    const nl = Math.hypot(...n);
+    this.normal = [n[0] / nl, n[1] / nl, n[2] / nl];
+    this.centre = galactic(0, 0, 0);
 
     this.stars = new Cloud(parent, star.pos, star.col, star.size, 1.5, 4, 0.45);
     this.haze = new Cloud(parent, haze.pos, haze.col, haze.size, 1.5, 120, 0.6, new Vector2(6, 24));
   }
 
   /** Shows the model once the camera is far enough out that the Galaxy, not the nearby stars, fills the view. */
-  update(height: number, fovDeg: number, sunDist: number) {
+  update(height: number, fovDeg: number, cam: Vec, trueSize: boolean, zoom: number) {
+    const sunDist = Math.hypot(...cam);
     const scale = height / (2 * Math.tan(MathUtils.degToRad(fovDeg / 2)));
     const k = Galaxy.presence(sunDist);
+    const lg = Math.log10(sunDist / AU_PER_LY);
     // the glow only reads as a glow from well outside; from inside it breaks into blobs
-    const h = k * MathUtils.smoothstep(Math.log10(sunDist / AU_PER_LY), 3.9, 4.6);
+    const h = k * MathUtils.smoothstep(lg, 3.9, 4.6);
+    // the painting is flat: show it when looking down on the disk from well outside, the points edge on
+    const d = [cam[0] - this.centre[0], cam[1] - this.centre[1], cam[2] - this.centre[2]];
+    const tilt =
+      Math.abs(d[0] * this.normal[0] + d[1] * this.normal[1] + d[2] * this.normal[2]) / Math.hypot(...d);
+    // and fade it on the way in to the centre, where its painted bar would fill the screen
+    const fromCentre = Math.log10(Math.hypot(...d) / AU_PER_LY);
+    const w =
+      MathUtils.smoothstep(tilt, 0.2, 0.55) *
+      MathUtils.smoothstep(lg, 4.0, 4.6) *
+      MathUtils.smoothstep(fromCentre, 4.6, 5.15);
+    this.paint.opacity = w;
+    this.paintWeight = w;
     for (const [c, o] of [
-      [this.stars, k],
-      [this.haze, h],
+      [this.stars, k * (1 - 0.75 * w)],
+      [this.haze, h * (1 - w)],
     ] as const) {
       c.mat.uniforms.scale.value = scale;
       c.mat.uniforms.opacity.value = o;
       c.points.visible = o > 0.01;
+    }
+
+    for (const d of this.dwarfs) {
+      const dist = Math.hypot(cam[0] - d.pos[0], cam[1] - d.pos[1], cam[2] - d.pos[2]);
+      const px = (2 * d.radius * scale) / Math.max(dist, 1);
+      const grow = trueSize ? 1 : Math.max(1, DWARF_MIN_PX / px);
+      // at true size, a galaxy only a pixel or two across is not worth drawing
+      // and zoomed in on something small, like Sgr A*, galaxies 160,000 light years off are out of the picture
+      const seen = k * Galaxy.presence(zoom) * (trueSize ? MathUtils.smoothstep(px, 1.5, 6) : 1);
+      d.group.scale.setScalar(grow);
+      for (const [c, o] of [
+        [d.stars, seen],
+        [d.haze, seen * MathUtils.smoothstep(lg, 3.9, 4.6)],
+      ] as const) {
+        c.mat.uniforms.scale.value = scale;
+        c.mat.uniforms.grow.value = grow;
+        c.mat.uniforms.opacity.value = o;
+        c.points.visible = o > 0.01;
+      }
+      if (d.glow) {
+        d.glow.scale.setScalar(d.glowSize * grow);
+        (d.glow.material as SpriteMaterial).opacity *= seen;
+      }
     }
   }
 
