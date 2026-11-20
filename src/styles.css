@@ -1091,8 +1091,13 @@ select:focus-visible {
   display: none;
 }
 
-.scale .chase:hover {
+.scale .chase:hover:not(:disabled) {
   color: var(--fg);
+}
+
+.scale .chase:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .scale .chase[aria-pressed="true"] {

@@ -266,6 +266,12 @@ async function start() {
     },
     goToView(view: View) {
       const v = this.resolveView(view);
+      // the Solar System stops only set how far out: centred on a planet, a comet or anything else, stay on it
+      const here = rig.focusId;
+      if (v.focus === 'sun' && here !== 'sun' && !here.startsWith('view:')) {
+        rig.flyTo(here, v.distance);
+        return;
+      }
       const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
       rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? lineOfSight(v.focus) : galaxyLook(v.tilt));
     },

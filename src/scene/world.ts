@@ -518,7 +518,7 @@ export class World {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
       const ppa = this.rig.pxPerAu(Math.hypot(...toCam), this.height);
-      this.sgr.update(day, toCam, ppa, layers.trueSize);
+      this.sgr.update(day, toCam, ppa, layers.trueSize, layers.orbits);
       const side = this.sgr.quadPx(ppa) * pr;
       const area = Math.min(side * side, this.width * this.height * pr * pr);
       if (dt > 0) {

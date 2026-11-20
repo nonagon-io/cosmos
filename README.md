@@ -1,6 +1,6 @@
-# Solar System
+# Cosmos
 
-The Solar System in 3D, from 1900 to 2100, with planets, moons, comets and spacecraft where they really were or will be on each date. You can zoom from the Earth and Moon out past the Oort cloud and the nearby stars to the whole Milky Way and the Magellanic Clouds. The app is Thai first, with an English version.
+The Solar System and everything past it in 3D. Planets, moons, comets and spacecraft are where they really were or will be on each date from 1900 to 2100, and you can zoom out past the Oort cloud, the nearby stars, the Milky Way and millions of galaxies to the microwave background at the edge of the observable universe. The app is Thai first (as เอกภพ), with an English version.
 
 ```
 npm install

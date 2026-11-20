@@ -18,10 +18,10 @@ const MONTHS = [
 ];
 
 export const en: Dict = {
-  title: 'Solar System',
+  title: 'Cosmos',
   tagline:
-    'Where the planets, moons, comets and spacecraft really are, from 1900 to 2100. Zoom out as far as the Oort cloud.',
-  loading: 'Loading the Solar System…',
+    'Where the planets, moons, comets and spacecraft really are, 1900 to 2100. Zoom out to the edge of the observable universe.',
+  loading: 'Loading the cosmos…',
   loadingData: 'Loading orbits…',
   language: 'Language',
   close: 'Close',
@@ -191,7 +191,7 @@ export const en: Dict = {
     'The stars look crowded around the Sun because the catalogue is incomplete, not because they are.',
   more: 'More',
   chaseTip:
-    'The camera sits behind the body in the center and looks where it is heading. Moons use their heading around their planet. When fast playback swings the heading too quickly, the camera holds still and catches up once it slows. Drag to change the angle (V key).',
+    'The camera sits behind the body in the center and looks where it is heading. Moons use their heading around their planet. When fast playback swings the heading too quickly, the camera holds still and catches up once it slows. Drag to change the angle (V key). Only while time is playing.',
   showOnTimeline: 'See event',
   eventGo: 'Go to event',
 

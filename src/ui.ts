@@ -73,8 +73,10 @@ export function setupUI(store: Store, act: Actions) {
       store.select({ kind: 'region', region: r });
     }
   });
+  // facing the way a body travels only means something while time runs and carries it along its orbit
+  const moving = () => store.playing && !store.deep;
   const toggleChase = () => {
-    if (act.canChase()) {
+    if (act.canChase() && moving()) {
       act.chase(!act.chase());
       chaseBtn.setAttribute('aria-pressed', String(act.chase()));
     }
@@ -105,7 +107,8 @@ export function setupUI(store: Store, act: Actions) {
     }
     const can = act.canChase();
     chaseBtn.hidden = !can;
-    if (!can && act.chase()) {
+    chaseBtn.disabled = !moving();
+    if ((!can || !moving()) && act.chase()) {
       act.chase(false);
     }
     chaseBtn.setAttribute('aria-pressed', String(act.chase()));

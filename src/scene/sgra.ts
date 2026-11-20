@@ -16,6 +16,7 @@ import {
 } from 'three';
 import { orient, solveKepler, type Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
+import { dot } from './textures';
 
 // Orbits of the S-stars as astronomers see them on the sky: a (arcsec), e, i, Ω, ω (degrees), time of
 // pericentre and period (years). Gillessen et al. 2017, S2 from GRAVITY 2019, S4711 and S4714 from Peißker
@@ -203,6 +204,7 @@ export class SgrA {
   private readonly disk: ShaderMaterial;
   /** The billboard the disk is traced on. */
   readonly quad: Mesh;
+  private readonly loops: LineLoop[] = [];
   private readonly orbitMat = new LineBasicMaterial({
     color: '#9d8cff',
     transparent: true,
@@ -281,6 +283,7 @@ export class SgrA {
       const loop = new LineLoop(g, this.orbitMat);
       loop.frustumCulled = false;
       this.group.add(loop);
+      this.loops.push(loop);
     }
 
     this.starPos = new Float32Array(S_STARS.length * 3);
@@ -290,7 +293,8 @@ export class SgrA {
       g,
       new PointsMaterial({
         color: new Color('#cfe0ff'),
-        size: 5,
+        map: dot(),
+        size: 8,
         sizeAttenuation: false,
         transparent: true,
         depthWrite: false,
@@ -322,7 +326,7 @@ export class SgrA {
    * Moves the stars to `day` and fades things by where the camera is: `toCam` runs from Sgr A* to the camera
    * in ecliptic AU.
    */
-  update(day: number, toCam: Vec, pxPerAu: number, trueSize: boolean) {
+  update(day: number, toCam: Vec, pxPerAu: number, trueSize: boolean, orbits: boolean) {
     const camDist = Math.hypot(...toCam);
     // grow the hole, rays and all, so it stays visible from far off unless true size is on
     const px = 5.2 * RS * pxPerAu;
@@ -354,6 +358,9 @@ export class SgrA {
     // the orbits span a few thousand AU; far out they would only be a speck over the Galaxy model
     const near = 1 - MathUtils.smoothstep(lg, 4.6, 5.4);
     this.orbitMat.opacity = 0.45 * near;
+    for (const l of this.loops) {
+      l.visible = orbits;
+    }
     (this.points.material as PointsMaterial).opacity = near;
     this.group.visible = near > 0.001;
   }
