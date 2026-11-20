@@ -106,7 +106,9 @@ const View = z.object({
   // a second thing to frame along with focus; the camera centres halfway between them
   also: id.optional(),
   // a stop for whatever body the camera is on (focus is the fallback): filling the view, or with its moons
-  relative: z.enum(['body', 'system']).optional(),
+  // or framing whatever region the camera is on, under that region's own name
+  relative: z.enum(['body', 'system', 'region']).optional(),
+  ladder: z.string().optional(),
 });
 
 const Event = z.object({
@@ -228,6 +230,14 @@ export function buildDataset(raw: Record<string, string>): Dataset {
   for (const v of d.views) {
     if (!ids.has(v.focus)) {
       problems.push(`views.yaml: ${v.id}: ไม่มี focus "${v.focus}"`);
+    }
+    if (
+      v.ladder &&
+      v.ladder !== 'solar' &&
+      v.ladder !== 'region' &&
+      !d.regions.some((r) => r.id === v.ladder)
+    ) {
+      problems.push(`views.yaml: ${v.id}: ไม่มี ladder "${v.ladder}"`);
     }
   }
   const evIds = new Set<string>();

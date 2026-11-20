@@ -1,58 +1,74 @@
 # Zoom stops in the scale panel. `distance` is the camera distance in AU, `focus` the body it centres on.
 # `relative` stops work on whatever body the camera is on, or Earth; their distance here is Earth's
+# `ladder` sets which focus a stop belongs to: `solar` for anything in the Solar System, a region's id for the
+# stops of that region alone, `region` for any other region without its own. Stops without one are shared,
+# from the Galaxy out, and kept on whatever deep-sky object the camera is on.
 - id: body
   name: วัตถุเต็มดวง
   focus: earth
+  ladder: solar
   distance: 0.0002
   relative: body
 - id: system
   name: วัตถุและบริวาร
   focus: earth
+  ladder: solar
   distance: 0.012
   relative: system
 - id: inner
   name: ดาวเคราะห์ชั้นใน
   focus: sun
+  ladder: solar
   distance: 4.5
 - id: jupiter-belt
   name: แถบดาวเคราะห์น้อยและดาวพฤหัสบดี
   focus: sun
+  ladder: solar
   distance: 13
 - id: outer
   name: ดาวเคราะห์ชั้นนอก
   focus: sun
+  ladder: solar
   distance: 75
 - id: kuiper
   name: แถบไคเปอร์
   focus: sun
+  ladder: solar
   distance: 190
 - id: heliosphere
   name: เฮลิโอสเฟียร์และยานวอยเอเจอร์
   focus: sun
+  ladder: solar
   distance: 480
 - id: sednoids
   name: วงโคจรเซดนา
   focus: sun
+  ladder: solar
   distance: 3200
 - id: inner-oort
   name: เมฆออร์ตชั้นใน
   focus: sun
+  ladder: solar
   distance: 55000
 - id: outer-oort
   name: เมฆออร์ตชั้นนอก
   focus: sun
+  ladder: solar
   distance: 320000
 - id: nearest-stars
   name: ดาวฤกษ์ที่ใกล้ที่สุด
   focus: sun
+  ladder: solar
   distance: 1400000
 - id: star-neighbourhood
   name: ดาวในรัศมี 100 ปีแสง
   focus: sun
+  ladder: solar
   distance: 19000000
 - id: star-field
   name: ดาวที่วัดระยะได้
   focus: sun
+  ladder: solar
   distance: 190000000
 - id: milky-way
   name: ทางช้างเผือก
@@ -106,3 +122,32 @@
   focus: milky-way
   distance: 7500000000000000
   tilt: 35
+
+# Sgr A*: from the shadow of the hole out to the S-stars
+- id: sgr-shadow
+  name: เงาหลุมดำ
+  focus: sgr-a
+  distance: 1.6
+  ladder: sgr-a
+- id: sgr-s2-pericentre
+  name: ดาว S2 ช่วงเฉียดหลุมดำ
+  focus: sgr-a
+  distance: 600
+  ladder: sgr-a
+- id: sgr-s2
+  name: วงโคจรดาว S2
+  focus: sgr-a
+  distance: 4500
+  ladder: sgr-a
+- id: sgr-s-stars
+  name: กระจุกดาว S
+  focus: sgr-a
+  distance: 22000
+  ladder: sgr-a
+# any other region, framed whole; the name shown is the region's
+- id: region
+  name: ทั้งวัตถุ
+  focus: andromeda
+  distance: 1
+  ladder: region
+  relative: region

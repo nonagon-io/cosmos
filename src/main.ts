@@ -7,7 +7,7 @@ import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume 
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
-import { eclipticDir, type StarData, type StarField } from './scene/stars';
+import { AU_PER_LY, eclipticDir, type StarData, type StarField } from './scene/stars';
 import type { SurveyManifest, SurveyName } from './scene/survey';
 import { World } from './scene/world';
 import { setupSearch } from './search';
@@ -247,6 +247,10 @@ async function start() {
       if (!v.relative) {
         return v;
       }
+      if (v.relative === 'region') {
+        const r = store.regionById.get(rig.focusId.slice(7)) ?? store.regionById.get(v.focus);
+        return r?.at ? { ...v, focus: r.id, name: r.name, distance: r.at.radius * AU_PER_LY * 3.5 } : v;
+      }
       // the body the camera is on, unless that is the Sun, whose family is the rest of the ladder
       const f = rig.focusId;
       const id = store.bodyById.has(f) && f !== 'sun' ? f : v.focus;
@@ -264,11 +268,35 @@ async function start() {
       }
       return { ...v, focus: id, distance: far > 0 ? far * 4.7 : r * 40 };
     },
+    /**
+     * The stops for wherever the camera is: a region with stops of its own gets those, any other region one
+     * stop framing it, and everything else the Solar System's. The shared stops from the Galaxy out follow,
+     * those above the last of the region's kept on the region.
+     */
+    ladder(): View[] {
+      const f = rig.focusId;
+      const rid = f.startsWith('region:') && f !== 'region:milky-way' ? f.slice(7) : '';
+      const all = store.data.views;
+      const kind = !rid ? 'solar' : all.some((v) => v.ladder === rid) ? rid : 'region';
+      const own = all.filter((v) => v.ladder === kind).map((v) => this.resolveView(v));
+      if (kind === 'solar') {
+        return [...own, ...all.filter((v) => !v.ladder)];
+      }
+      const top = own[own.length - 1].distance * 1.5;
+      const shared = all.filter(
+        (v) =>
+          !v.ladder &&
+          v.distance > top &&
+          // a pair framed together only when the region is one of them, or inside the Galaxy
+          (!v.also || kind !== 'region' || v.focus === rid || v.also === rid),
+      );
+      return [...own, ...shared.map((v) => (v.also ? v : { ...v, focus: rid }))];
+    },
     goToView(view: View) {
       const v = this.resolveView(view);
       // the Solar System stops only set how far out: centred on a planet, a comet or anything else, stay on it
       const here = rig.focusId;
-      if (v.focus === 'sun' && here !== 'sun' && !here.startsWith('view:')) {
+      if (v.focus === 'sun' && here !== 'sun' && store.bodyById.has(here)) {
         rig.flyTo(here, v.distance);
         return;
       }

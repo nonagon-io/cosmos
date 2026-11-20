@@ -78,7 +78,7 @@ All data lives in `data/` as YAML and is checked against `src/data/schema.ts` on
 
 - `bodies.yaml`: every named body. `orbit` says where its position comes from (`engine`, `jupiter`, `moon`, `named`, `craft`); a new `moon`, `named` or `craft` body also needs an entry in `scripts/fetch-data.ts` and a fetch.
 - `regions.yaml`: belts, the heliosphere and the Oort cloud, plus star clusters, nebulae and galaxies placed with `at`.
-- `views.yaml`: the zoom stops in the scale panel. `tilt` views the Galaxy from that many degrees above its plane, and `also` centres the view halfway between `focus` and a second object.
+- `views.yaml`: the zoom stops in the scale panel. `tilt` views the Galaxy from that many degrees above its plane, and `also` centres the view halfway between `focus` and a second object. `ladder` groups the stops by what the camera is on: `solar` for anything in the Solar System, a region's id for stops of its own (Sgr A* has them, from the shadow out to the S-stars), and `region` for the one stop that frames any other region under its own name. Stops with no ladder are shared from the Galaxy out; on a deep-sky object they keep it in the centre.
 - `events.yaml`: timeline events. `importance: 3` stops playback when that box is ticked, 2 shows a toast. `uncertain` adds a note for dates that are estimates.
 - `timeline.yaml`: the date range, the slider's stretch and the starting camera.
 - `i18n/en/`: English text keyed by id. Names come from the `en` field. UI text is in `src/i18n/th.ts` and `en.ts`.

@@ -14,7 +14,7 @@ const SETTLE_MS = 260;
  * picks the view it settles on and flies there.
  */
 export class ScaleWheel {
-  private readonly items: HTMLElement[];
+  private items: HTMLElement[];
   private pos = 0;
   private target = 0;
   // following the camera, being turned by hand, or holding on a picked view while the camera flies to it
@@ -28,7 +28,7 @@ export class ScaleWheel {
   private radius = 0;
 
   constructor(
-    list: HTMLElement,
+    private readonly list: HTMLElement,
     /** The stops, with distances that can change as the camera moves between bodies. */
     public views: View[],
     private readonly go: (v: View) => void,
@@ -124,6 +124,20 @@ export class ScaleWheel {
     });
 
     measure();
+  }
+
+  /**
+   * A different set of stops, rendered into the list already: the drum turns straight to where the camera is
+   * among them rather than spinning across from the old row.
+   */
+  replace(views: View[], distance: number) {
+    this.views = views;
+    this.items = [...this.list.querySelectorAll<HTMLElement>('li')];
+    clearTimeout(this.settle);
+    this.mode = 'follow';
+    this.target = this.rowOf(distance);
+    this.pos = this.target;
+    this.draw();
   }
 
   /** Where the camera's `distance` falls among the views, as a fractional row. */

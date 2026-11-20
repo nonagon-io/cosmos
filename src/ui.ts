@@ -17,6 +17,7 @@ export interface Actions {
   goToEvent(e: SpaceEvent): void;
   goToView(view: View): void;
   resolveView(view: View): View;
+  ladder(): View[];
   positionOf(id: string): Vec | null;
   velocityOf(id: string): Vec | null;
   camera(): { focus: string; distance: number };
@@ -44,17 +45,30 @@ export function setupUI(store: Store, act: Actions) {
 
   // scale ladder
   const views = $('views');
-  views.innerHTML = store.data.views
-    .map(
-      (v, i) =>
-        `<li><button type="button" data-v="${i}"><span>${esc(v.name)}</span><b>${fmtDistance(v.distance)}</b></button></li>`,
-    )
-    .join('');
-  const wheel = new ScaleWheel(views, store.data.views, (v) => act.goToView(v));
-  const stopDistances = [...views.querySelectorAll('b')];
-  // the stops for whatever body the camera is on change with it
+  const renderStops = (list: View[]) => {
+    views.innerHTML = list
+      .map(
+        (v, i) =>
+          `<li><button type="button" data-v="${i}"><span>${esc(v.name)}</span><b>${fmtDistance(v.distance)}</b></button></li>`,
+      )
+      .join('');
+    return [...views.querySelectorAll('b')];
+  };
+  const keyOf = (list: View[]) => list.map((v) => `${v.id}:${v.name}`).join();
+  let stops = act.ladder();
+  let stopsKey = keyOf(stops);
+  let stopDistances = renderStops(stops);
+  const wheel = new ScaleWheel(views, stops, (v) => act.goToView(v));
+  // the stops change with what the camera is on: the Solar System's, a region's own, or one framing the region
   const resolveViews = () => {
-    wheel.views = store.data.views.map((v) => act.resolveView(v));
+    stops = act.ladder();
+    const key = keyOf(stops);
+    if (key !== stopsKey) {
+      stopsKey = key;
+      stopDistances = renderStops(stops);
+      wheel.replace(stops, act.camera().distance);
+    }
+    wheel.views = stops;
     for (const [i, v] of wheel.views.entries()) {
       const text = fmtDistance(v.distance);
       if (stopDistances[i].textContent !== text) {
