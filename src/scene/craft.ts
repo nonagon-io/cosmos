@@ -88,8 +88,40 @@ function orient(q: Quaternion, [a1, d1, a2, d2]: [Vector3, Vec, Vector3, Vec]) {
   return q.setFromRotationMatrix(m1.multiply(m2));
 }
 
+/** A part that turns on its own to face the Sun, like Hubble's solar arrays: about `axis`, cells on `face`. */
+interface Tracker {
+  pivot: Group;
+  axis: Vector3;
+  face: Vector3;
+}
+
+function trackers(model: Object3D) {
+  const found: Object3D[] = [];
+  model.traverse((o) => {
+    if (o.userData.pivot) {
+      found.push(o);
+    }
+  });
+  return found.map((o): Tracker => {
+    const { pivot, axis, face } = o.userData as Record<string, [number, number, number]>;
+    // hung from a group at the pivot, so turning the group turns the part about it
+    const g = new Group();
+    g.position.set(...pivot);
+    (o.parent as Object3D).add(g);
+    o.position.sub(g.position);
+    g.add(o);
+    return { pivot: g, axis: new Vector3(...axis), face: new Vector3(...face) };
+  });
+}
+
+const s1 = new Vector3();
+const s2 = new Vector3();
+const s3 = new Vector3();
+const qi = new Quaternion();
+
 class CraftModel {
   model: Object3D | null = null;
+  parts: Tracker[] = [];
   private loading = false;
 
   constructor(
@@ -111,6 +143,7 @@ class CraftModel {
       p.then((scene) => {
         this.model = scene.clone();
         this.model.visible = false;
+        this.parts = trackers(this.model);
         this.parent.add(this.model);
       });
     }
@@ -177,6 +210,16 @@ export class CraftScene {
     o.visible = true;
     o.position.set(rel[0] * M_PER_AU, rel[1] * M_PER_AU, rel[2] * M_PER_AU);
     o.quaternion.copy(orient(this.q, ATTITUDE[m.attitude](frame)));
+    if (m.parts.length) {
+      // the Sun in the model's own frame, then the turn about each axis that brings the cells round to it
+      qi.copy(o.quaternion).invert();
+      s1.set(...frame.toSun).applyQuaternion(qi);
+      for (const t of m.parts) {
+        s2.copy(s1).addScaledVector(t.axis, -s1.dot(t.axis));
+        const angle = Math.atan2(t.axis.dot(s3.crossVectors(t.face, s2)), t.face.dot(s2));
+        t.pivot.quaternion.setFromAxisAngle(t.axis, angle);
+      }
+    }
     const d = Math.hypot(...rel);
     this.reach = Math.max(this.reach, (d + radius * 2) * M_PER_AU);
     // lit for the nearest one; a step toward the Sun gives the light's direction
