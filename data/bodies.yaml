@@ -630,7 +630,7 @@
   orbit: named
   radius: 5.5
   rotation: 52.8
-  tail: { ion: 0.25, dust: 0.1 }
+  tail: { ion: 0.25, dust: 0.1, coma: 100000 }
   color: '#bfe4ff'
   desc: ดาวหางคาบสั้นที่ดังที่สุด กลับมาทุก 75–79 ปี ครั้งล่าสุดปี 1986 ครั้งหน้าราวกรกฎาคม 2061
 
@@ -641,7 +641,7 @@
   orbit: named
   radius: 2.4
   rotation: 11
-  tail: { ion: 0.03, dust: 0.01 }
+  tail: { ion: 0.03, dust: 0.01, coma: 10000 }
   color: '#bfe4ff'
   desc: คาบสั้นที่สุดในบรรดาดาวหางที่เห็นได้ คือ 3.3 ปี และเป็นต้นทางของฝนดาวตกทอริดส์
 
@@ -652,7 +652,7 @@
   orbit: named
   radius: 2
   rotation: 12.4
-  tail: { ion: 0.005, dust: 0.005 }
+  tail: { ion: 0.005, dust: 0.005, coma: 5000 }
   color: '#bfe4ff'
   desc: ยานโรเซตตาโคจรรอบและส่งยานฟิเลลงจอดในปี 2014 เป็นครั้งแรกที่ยานลงบนดาวหาง
 
@@ -663,7 +663,7 @@
   orbit: named
   radius: 30
   rotation: 11.3
-  tail: { ion: 0.7, dust: 0.4, onset: 7 }
+  tail: { ion: 0.7, dust: 0.4, coma: 800000, onset: 7 }
   color: '#bfe4ff'
   desc: ดาวหางใหญ่ปี 1997 เห็นได้ด้วยตาเปล่านานถึง 18 เดือน วงโคจรราว 2,400 ปี
 
@@ -674,7 +674,7 @@
   orbit: named
   radius: 2.1
   rotation: 6.3
-  tail: { ion: 3.8, dust: 0.12 }
+  tail: { ion: 3.8, dust: 0.12, coma: 200000 }
   color: '#bfe4ff'
   desc: ผ่านใกล้โลกในปี 1996 หางยาวที่สุดเท่าที่วัดได้ ยาวกว่า 3.8 AU
 
@@ -685,7 +685,7 @@
   orbit: named
   radius: 2.5
   rotation: 7.6
-  tail: { ion: 0.15, dust: 0.1 }
+  tail: { ion: 0.15, dust: 0.1, coma: 60000 }
   color: '#bfe4ff'
   desc: ดาวหางสว่างกลางปี 2020 จะกลับมาอีกในราว 6,700 ปี
 
@@ -696,7 +696,7 @@
   orbit: named
   radius: 2.5
   rotation: 0
-  tail: { ion: 0.2, dust: 0.25 }
+  tail: { ion: 0.2, dust: 0.25, coma: 100000 }
   color: '#bfe4ff'
   desc: ดาวหางสว่างเดือนตุลาคม 2024 มาจากเมฆออร์ต
 
@@ -707,7 +707,7 @@
   orbit: named
   radius: 60
   rotation: 0
-  tail: { ion: 0, dust: 0.01, onset: 25 }
+  tail: { ion: 0, dust: 0.01, coma: 50000, onset: 25 }
   color: '#bfe4ff'
   desc: นิวเคลียสใหญ่ที่สุดเท่าที่รู้จัก กว้างราว 120 กม. กำลังเดินทางจากเมฆออร์ตเข้ามาถึงจุดใกล้สุดในปี 2031 ใกล้วงโคจรดาวเสาร์
 
@@ -741,7 +741,7 @@
   orbit: named
   radius: 0.5
   rotation: 0
-  tail: { ion: 0, dust: 0.001, onset: 8 }
+  tail: { ion: 0, dust: 0.001, coma: 15000, onset: 8 }
   color: '#e7b9a0'
   desc: ดาวหางจากนอกระบบสุริยะดวงแรก พบโดยนักดาราศาสตร์สมัครเล่นในปี 2019
 
@@ -750,11 +750,17 @@
   en: 3I/ATLAS
   kind: interstellar
   orbit: named
-  radius: 1
-  rotation: 0
-  tail: { ion: 0.01, dust: 0.01, onset: 6 }
-  color: '#e7b9a0'
-  desc: วัตถุจากนอกระบบสุริยะดวงที่สาม พบในเดือนกรกฎาคม 2025 วิ่งเร็วกว่า 58 กม./วินาที อาจเก่าแก่กว่าระบบสุริยะ
+  # Hubble (Jewitt et al. 2025) put the nucleus between 0.32 and 5.6 km across; no shape is known
+  shape: { axes: [1.2, 1.0, 0.85], guess: true }
+  tail: { ion: 0.01, dust: 0.01, coma: 40000, onset: 6 }
+  color: '#6b5a50'
+  desc: >-
+    วัตถุจากนอกระบบสุริยะดวงที่สาม ค้นพบโดยกล้อง ATLAS ในชิลีเมื่อ 1 ก.ค. 2025 วิ่งเร็วราว 58 กม./วินาที
+    บนวงโคจรไฮเพอร์โบลา ผ่านมาครั้งเดียวแล้วไม่กลับมาอีก อาจเก่าแก่กว่าระบบสุริยะ
+
+    ต่างจากโอมูอามูอา มันเป็นดาวหางที่มีฝ้าก๊าซและฝุ่นห่อตัวตั้งแต่ตอนค้นพบ เข้าใกล้ดวงอาทิตย์ที่สุดปลายเดือน ต.ค. 2025
+    ที่ราว 1.4 AU กล้องหลายตัวรวมถึง Hubble และ JWST ศึกษามันละเอียดที่สุดเท่าที่เคยทำกับวัตถุจากระบบดาวอื่น
+    แต่ทุกภาพเห็นแค่ฝ้า ส่วนแกนกลางเล็กเกินกว่าจะแยกเห็นได้
 
 - id: pioneer-10
   name: ไพโอเนียร์ 10

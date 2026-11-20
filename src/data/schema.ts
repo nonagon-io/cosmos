@@ -31,10 +31,15 @@ const Body = z.object({
   period: z.number().positive().optional(),
   texture: z.string().optional(),
   illustrated: z.boolean().optional(),
-  // tail lengths in AU near perihelion, roughly as observed; they shrink with distance from the Sun and fade out
-  // beyond `onset` AU (default 4)
+  // tail lengths in AU and coma radius in km near perihelion, roughly as observed; they shrink with distance from
+  // the Sun and fade out beyond `onset` AU (default 4)
   tail: z
-    .object({ ion: z.number().min(0), dust: z.number().min(0), onset: z.number().positive().optional() })
+    .object({
+      ion: z.number().min(0),
+      dust: z.number().min(0),
+      coma: z.number().positive().optional(),
+      onset: z.number().positive().optional(),
+    })
     .optional(),
   // longitude at the middle of the texture, when it is not 0
   textureCenter: z.number().optional(),
@@ -46,6 +51,8 @@ const Body = z.object({
     .object({
       axes: z.tuple([z.number().positive(), z.number().positive(), z.number().positive()]),
       tumble: z.number().positive().optional(),
+      // no light curve to model it from either: a generic comet nucleus at the middle of the size estimates
+      guess: z.boolean().optional(),
     })
     .optional(),
   color,

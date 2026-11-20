@@ -136,7 +136,8 @@ export function setupUI(store: Store, act: Actions) {
   const bodyCard = (b: Body) => {
     const rows: [string, string][] = [];
     if (b.shape) {
-      rows.push([t.size, t.dimensionsM(b.shape.axes.map((a) => a * 2000))]);
+      const d = b.shape.axes.map((a) => a * 2);
+      rows.push([t.size, d[0] >= 2 ? t.dimensionsKm(d) : t.dimensionsM(d.map((x) => x * 1000))]);
     } else if (b.radius) {
       rows.push([t.radius, t.km(b.radius)]);
     }
@@ -165,7 +166,7 @@ export function setupUI(store: Store, act: Actions) {
       notes.push(t.illustrated);
     }
     if (b.shape) {
-      notes.push(t.modelShape);
+      notes.push(b.shape.guess ? t.guessShape : t.modelShape);
     }
     if (b.tail) {
       notes.push(t.tailModel);

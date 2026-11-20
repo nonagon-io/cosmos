@@ -82,6 +82,28 @@ export function dot() {
   return dotTexture;
 }
 
+let comaTexture: Texture | null = null;
+
+/** A comet's coma: a bright, small inner core in a wide, faint, slightly green haze. */
+export function coma() {
+  if (!comaTexture) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d') as CanvasRenderingContext2D;
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(240,255,250,1)');
+    grad.addColorStop(0.1, 'rgba(215,250,238,0.8)');
+    grad.addColorStop(0.3, 'rgba(175,238,218,0.35)');
+    grad.addColorStop(0.6, 'rgba(150,222,205,0.1)');
+    grad.addColorStop(1, 'rgba(150,220,205,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    comaTexture = new CanvasTexture(c);
+    comaTexture.colorSpace = SRGBColorSpace;
+  }
+  return comaTexture;
+}
+
 let glowTexture: Texture | null = null;
 
 /** The Sun's glare, bright at the centre and falling off slowly. */

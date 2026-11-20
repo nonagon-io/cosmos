@@ -82,6 +82,8 @@ export const en: Dict = {
   ]),
   model: 'Model',
   illustrated: 'Illustrated surface; no real images exist yet',
+  guessShape:
+    'Simulated: no telescope has resolved this nucleus, only the cloud of gas and dust around it. The app shows a dark, lumpy ball of ice and rock like the comet nuclei spacecraft have photographed, sized at the middle of the estimates.',
   modelShape:
     'Simulated: no telescope has ever seen this object’s shape. The shape, size and spin shown come from a model fitted to how its brightness changed.',
 
@@ -92,7 +94,7 @@ export const en: Dict = {
   size: 'Approximate size',
   tumbling: 'tumbling',
   tailModel:
-    'The tails are a model. Their directions follow the physics: the blue ion tail points straight away from the Sun and the dust tail curves back along the orbit. Their length and brightness are estimates scaled from what was observed and from the distance to the Sun, and they fade out far from the Sun.',
+    'The tails and coma are a model. Their directions follow the physics: the blue ion tail points straight away from the Sun and the dust tail curves back along the orbit. Tail length, coma size and brightness are estimates scaled from what was observed and from the distance to the Sun, and they fade out far from the Sun.',
   unmapped:
     'The surface is New Horizons’ own imagery (2015), but most of the southern hemisphere was in seasonal darkness during the flyby and has never been photographed. That part is painted a plain color.',
   catalogDensity:
@@ -102,6 +104,7 @@ export const en: Dict = {
   catalogDrift:
     'Every dot is a real, discovered object, but its position comes from one set of current orbital elements from JPL, without the planets’ pull. Dots are closest to true around the present and drift further off the further you move in time, near-Earth asteroids most of all. The shape of the belt as a whole stays right. Named objects with their own card follow JPL positions accurate across the whole range.',
   dimensionsM: (d: number[]) => `${d.map((x) => Math.round(x)).join(' × ')} m`,
+  dimensionsKm: (d: number[]) => `${d.map((x) => x.toFixed(1)).join(' × ')} km`,
   mass: 'Mass',
   orbitPeriod: 'Orbital period',
   day: 'Rotation',

@@ -8,10 +8,17 @@ import {
   MathUtils,
   Mesh,
   ShaderMaterial,
+  Sprite,
+  SpriteMaterial,
 } from 'three';
 import type { Vec } from '../astro/kepler';
 import type { Body } from '../data/schema';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
+import { coma } from './textures';
+
+const KM_PER_AU = 149597870.7;
+// the coma never shrinks below a soft halo this many px across, except at true size
+const COMA_MIN_PX = 3;
 
 const SEGMENTS = 48;
 
@@ -128,18 +135,37 @@ class Ribbon {
 }
 
 /**
- * Ion and dust tails of the named comets. The directions follow physics (the ion tail straight away from the
+ * Ion and dust tails and the glowing coma of the named comets. The directions follow physics (the ion tail straight away from the
  * Sun, the dust tail curving back along the orbit); the lengths are scaled from roughly what each comet showed,
  * by the inverse square of its distance from the Sun.
  */
 export class CometTails {
-  private readonly tails: { body: Body; q: number; ion: Ribbon; dust: Ribbon }[] = [];
+  private readonly tails: { body: Body; q: number; ion: Ribbon; dust: Ribbon; coma: Sprite | null }[] = [];
 
   constructor(parent: Group, bodies: Body[], perihelion: (id: string) => number | null) {
     for (const body of bodies) {
       const q = perihelion(body.id);
       if (body.tail && q) {
-        this.tails.push({ body, q, ion: new Ribbon(parent, ION), dust: new Ribbon(parent, DUST) });
+        let halo: Sprite | null = null;
+        if (body.tail.coma) {
+          halo = new Sprite(
+            new SpriteMaterial({
+              map: coma(),
+              blending: AdditiveBlending,
+              depthWrite: false,
+              transparent: true,
+            }),
+          );
+          halo.visible = false;
+          parent.add(halo);
+        }
+        this.tails.push({
+          body,
+          q,
+          ion: new Ribbon(parent, ION),
+          dust: new Ribbon(parent, DUST),
+          coma: halo,
+        });
       }
     }
   }
@@ -150,6 +176,7 @@ export class CometTails {
     velocityOf: (id: string) => Vec | null,
     cam: Vec,
     pxPerAu: (p: Vec) => number,
+    trueSize: boolean,
   ) {
     for (const t of this.tails) {
       const p = positionOf(t.body.id);
@@ -161,6 +188,9 @@ export class CometTails {
       if (!p || !tail || !v || r === 0) {
         t.ion.hide();
         t.dust.hide();
+        if (t.coma) {
+          t.coma.visible = false;
+        }
         continue;
       }
       const away: Vec = [p[0] / r, p[1] / r, p[2] / r];
@@ -170,14 +200,32 @@ export class CometTails {
       const bn = Math.hypot(b[0], b[1], b[2]) || 1;
       const back: Vec = [b[0] / bn, b[1] / bn, b[2] / bn];
       const scale = Math.min(1.5, (t.q / r) ** 2) * active;
-      const minHalf = 0.8 / pxPerAu(p);
+      const px = pxPerAu(p);
+      const minHalf = 0.8 / px;
+      if (t.coma && tail.coma) {
+        // a coma swells less steeply than the tails as the comet nears the Sun
+        const size = (tail.coma / KM_PER_AU) * Math.min(1.5, t.q / r) * active;
+        const radius = trueSize ? size : Math.max(size, COMA_MIN_PX / px);
+        t.coma.position.set(p[0], p[1], p[2]);
+        // the haze fades out well past the nominal radius
+        t.coma.scale.setScalar(radius * 3);
+        const mat = t.coma.material as SpriteMaterial;
+        // from inside or right next to it a coma is too thin to see, it would only wash over the screen
+        const near = 1 - MathUtils.smoothstep(radius * px, 120, 500);
+        mat.opacity = 0.75 * Math.min(1, (t.q / r) ** 1.5) * active * near;
+        t.coma.visible = mat.opacity > 0.01;
+      }
       const glow = Math.sqrt(scale);
+      // right at the head the tail is wider than the view and only washes over it
+      const camDist = Math.hypot(cam[0] - p[0], cam[1] - p[1], cam[2] - p[2]);
       for (const [ribbon, peak] of [
         [t.ion, tail.ion],
         [t.dust, tail.dust],
       ] as const) {
         if (peak > 0) {
-          ribbon.set(p, away, back, peak * scale, cam, minHalf, ribbon.style.opacity * glow);
+          const head = peak * scale * ribbon.style.width[0];
+          const near = MathUtils.smoothstep(camDist, head * 2, head * 12);
+          ribbon.set(p, away, back, peak * scale, cam, minHalf, ribbon.style.opacity * glow * near);
         } else {
           ribbon.hide();
         }

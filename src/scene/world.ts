@@ -288,6 +288,7 @@ export class World {
       (id) => this.eph.velocity(id, day),
       [cx, cy, cz],
       (p) => this.rig.pxPerAu(Math.max(1e-12, Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz)), this.height),
+      layers.trueSize,
     );
     this.nearStars.update(pr, camDist);
 

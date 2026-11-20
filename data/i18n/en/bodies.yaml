@@ -72,7 +72,15 @@ oumuamua:
     It was also pushed away from the Sun a little harder than gravity alone explains, with no visible tail or gas.
     Why is still not settled.
 borisov: { desc: The first interstellar comet, found by an amateur astronomer in 2019. }
-atlas3i: { desc: The third interstellar object, found in July 2025. Moving at over 58 km/s, it may be older than the Solar System. }
+atlas3i:
+  desc: >-
+    The third object found from another star system, spotted by the ATLAS telescope in Chile on 1 July 2025.
+    It moves at about 58 km/s on a hyperbolic orbit, so it passes once and will not return. It may be older than
+    the Solar System.
+
+    Unlike ʻOumuamua it is a comet, wrapped in gas and dust from the day it was found. It passed closest to the Sun
+    in late October 2025, at about 1.4 AU. Hubble, JWST and many other telescopes studied it more closely than any
+    interstellar visitor before, but every image shows only the coma; the nucleus is too small to resolve.
 pioneer-10: { desc: The first craft to cross the asteroid belt and fly past Jupiter (1973). It carries a plaque for whoever finds it. Last contact was in 2003. }
 pioneer-11: { desc: The first craft to fly past Saturn (1979). Last contact was in 1995. }
 voyager-1: { desc: The most distant human-made object. It crossed the heliopause into interstellar space in 2012 and still sends data home. }
