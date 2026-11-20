@@ -26,3 +26,11 @@ helix-nebula:
   desc: The planetary nebula NGC 7293, one of the nearest, about 650 light years away. It is the shell of gas a Sun-like star threw off near the end of its life, around what is left of the star, a white dwarf. The Sun will do the same in about 5 billion years.
 orion-nebula:
   desc: The nearest region forming massive stars, about 1,344 light years away. To the eye it is the fuzzy star in Orion's sword. The gas glows from the light of the very hot Trapezium stars at its heart, and hundreds of newborn stars and planet-forming disks lie inside.
+milky-way:
+  desc: The barred spiral galaxy the Solar System is in, with some 100–400 billion stars. The disk is about 100,000 light years across but only about a thousand thick. The Sun is some 26,700 light years from the centre, in the Orion Arm, and goes round it once every 230 million years or so, only about 20 times since it formed. The pale band across the night sky is this disk seen from inside.
+sgr-a:
+  desc: The supermassive black hole at the centre of the Galaxy, about 4.3 million times the Sun's mass and 26,700 light years away towards Sagittarius. Dust hides it completely in visible light. Astronomers proved it is there from the orbits of the stars around it (the 2020 Nobel Prize in Physics), and the Event Horizon Telescope imaged its shadow in 2022.
+lmc:
+  desc: The largest satellite galaxy of the Milky Way, about 163,000 light years away, a naked-eye smudge in the southern sky. Supernova 1987A, the brightest of modern times, went off in it.
+smc:
+  desc: A dwarf satellite galaxy of the Milky Way, about 200,000 light years away, pulled out of shape by the gravity of the Milky Way and the Large Magellanic Cloud.

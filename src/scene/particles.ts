@@ -136,7 +136,7 @@ export class SmallBodies {
 }
 
 /** Seeded so the model cloud is the same on every load. */
-function rng(seed: number) {
+export function rng(seed: number) {
   let s = seed >>> 0;
   return () => {
     s = (s + 0x6d2b79f5) >>> 0;

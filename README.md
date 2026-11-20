@@ -1,6 +1,6 @@
 # Solar System
 
-The Solar System in 3D, from 1900 to 2100, with planets, moons, comets and spacecraft where they really were or will be on each date. You can zoom from the Earth and Moon out past the Oort cloud to the nearest stars. The app is Thai first, with an English version.
+The Solar System in 3D, from 1900 to 2100, with planets, moons, comets and spacecraft where they really were or will be on each date. You can zoom from the Earth and Moon out past the Oort cloud and the nearby stars to the whole Milky Way and the Magellanic Clouds. The app is Thai first, with an English version.
 
 ```
 npm install
@@ -40,6 +40,8 @@ Every body gets a marker dot a few pixels wide so you can find it from far away.
 
 Stars come from the [HYG database](https://github.com/astronexus/HYG-Database) (CC BY-SA 4.0). The 108,000 or so with a parallax distance within 3,000 light years are placed in 3D (`field.bin`), and the shader works out each one's magnitude from wherever the camera is, so from inside the Solar System they make up the night sky and further out they spread into the real neighbourhood. Out there the stars are brightened like a long exposure, or almost none would show. The catalogue is only complete for stars bright enough to measure from Earth, so the field looks thicker around the Sun than it is; the star-field card says so. The few hundred naked-eye stars without a usable distance stay on a sky sphere at infinity and fade out once the camera leaves the Sun. Clusters and nebulae are entries in `regions.yaml` with `at` (RA, Dec, light years); the nebula glows are simple stand-ins.
 
+Nobody has seen the Milky Way from outside, so beyond a few thousand light years it's a model built from points (`src/scene/galaxy.ts`): a bar, an exponential disk and five spiral arms. The parts that are measured are its size, the Sun's distance from the centre (8.18 kpc, GRAVITY 2019) and height above the plane, the tilt of the plane on our sky (the IAU galactic frame), and the arms on our side, which follow the log-spiral fits to maser parallaxes in Reid et al. 2014. The far side, hidden by dust, is the same spirals carried on. The Galaxy's card says all this. Sgr A* and the Magellanic Clouds are placed at their real positions and distances. Views and fly-tos to the Galaxy end above its plane (`tilt` in `views.yaml`), because edge on the whole disk piles into one bright line.
+
 ## Textures
 
 Planet maps are from [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0). Pluto uses New Horizons' color mosaic (NASA/JHUAPL/SwRI, public domain). Most of its southern hemisphere was in seasonal darkness during the 2015 flyby and was never photographed; that part is painted a plain color (`unmapped` in `bodies.yaml`) and the card says so. Charon uses New Horizons' grey global map (PIA19866, public domain) the same way; the side facing away from Pluto was only seen from far off, so it's blurry. No real maps exist for Ceres at this resolution or for Eris, Haumea and Makemake at all, so those use Solar System Scope's artist's impressions, set with `illustrated: true` in `bodies.yaml`, and their cards say the surface is simulated.
@@ -49,8 +51,8 @@ Planet maps are from [Solar System Scope](https://www.solarsystemscope.com/textu
 All data lives in `data/` as YAML and is checked against `src/data/schema.ts` on load and by `npm run validate`.
 
 - `bodies.yaml`: every named body. `orbit` says where its position comes from (`engine`, `jupiter`, `moon`, `named`, `craft`); a new `moon`, `named` or `craft` body also needs an entry in `scripts/fetch-data.ts` and a fetch.
-- `regions.yaml`: belts, the heliosphere and the Oort cloud.
-- `views.yaml`: the zoom stops in the scale panel.
+- `regions.yaml`: belts, the heliosphere and the Oort cloud, plus star clusters, nebulae and galaxies placed with `at`.
+- `views.yaml`: the zoom stops in the scale panel. `tilt` views the Galaxy from that many degrees above its plane, and `also` centres the view halfway between `focus` and a second object.
 - `events.yaml`: timeline events. `importance: 3` stops playback when that box is ticked, 2 shows a toast. `uncertain` adds a note for dates that are estimates.
 - `timeline.yaml`: the date range, the slider's stretch and the starting camera.
 - `i18n/en/`: English text keyed by id. Names come from the `en` field. UI text is in `src/i18n/th.ts` and `en.ts`.

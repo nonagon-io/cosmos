@@ -82,7 +82,21 @@ export const en: Dict = {
   ]),
   model: 'Model',
   illustrated: 'Illustrated surface; no real images exist yet',
-  dsoKinds: { cluster: 'Star cluster', nebula: 'Nebula' },
+  dsoKinds: {
+    cluster: 'Star cluster',
+    nebula: 'Nebula',
+    galaxy: 'Galaxy',
+    blackhole: 'Supermassive black hole',
+  },
+  arms: new Map([
+    ['scutum-centaurus', 'Scutum–Centaurus Arm'],
+    ['sagittarius-carina', 'Sagittarius–Carina Arm'],
+    ['local', 'Orion Arm (where the Sun is)'],
+    ['perseus', 'Perseus Arm'],
+    ['outer', 'Outer Arm'],
+  ]),
+  galaxyModel:
+    "Simulated: nobody has seen the Milky Way from outside, because we are in it. This shape is built from the models astronomers have measured. What is real is its size, the Sun's distance from the centre (about 26,700 light years), the tilt of the galactic plane on our sky, and the spiral arms on our side, placed by maser distances. The far side, hidden behind dust, carries the same arms on. The points are not real stars.",
   starField:
     'Every star is at its real position, from distances measured by parallax (the HYG database). But the catalogue is only complete for stars bright enough to measure from Earth, so farther out only the very bright ones are left. That makes the stars look crowded around the Sun and thinning out, which is not true; stars in this part of the galaxy are spread about evenly. Distances beyond about a thousand light years can be well off. Seen from outside the Solar System, the stars are brightened as a long exposure would, or you would hardly see any.',
   nebulaGlow:
@@ -93,6 +107,7 @@ export const en: Dict = {
     'Simulated: no telescope has ever seen this object’s shape. The shape, size and spin shown come from a model fitted to how its brightness changed.',
 
   distSun: 'From the Sun',
+  distCentre: 'Centre from the Sun',
   distEarth: 'From Earth',
   speedSun: 'Speed relative to the Sun',
   radius: 'Radius',

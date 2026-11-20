@@ -18,6 +18,7 @@ import { t } from '../i18n';
 import type { Store } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
+import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
@@ -28,6 +29,14 @@ import { haze } from './textures';
 
 // star names shown at once out among the stars
 const STAR_LABELS = 24;
+// where along each spiral arm its name goes, as a galactocentric radius in kpc
+const ARM_LABEL_R: Record<string, number> = {
+  'scutum-centaurus': 5.6,
+  'sagittarius-carina': 6.4,
+  local: 8.6,
+  perseus: 10.6,
+  outer: 14,
+};
 
 const PRIORITY: Record<Kind, number> = {
   star: 80,
@@ -85,6 +94,7 @@ export class World {
   private readonly heliosphere: Heliosphere;
   private readonly tails: CometTails;
   private readonly stars3d: Stars3D;
+  private readonly galaxy: Galaxy;
   private readonly skyMat: ShaderMaterial;
   private readonly labels: Labels;
   private width = 1;
@@ -162,6 +172,10 @@ export class World {
       }
       this.deepSky.push({ id: `region:${r.id}`, pos, radius: r.at.radius * AU_PER_LY, glow });
     }
+    this.galaxy = new Galaxy(
+      this.world,
+      this.deepSky.filter((o) => store.regionById.get(o.id.slice(7))?.at?.type === 'galaxy' && o.glow),
+    );
 
     const { focus, distance } = store.data.timeline.initialView;
     this.rig = new CameraRig(
@@ -261,6 +275,15 @@ export class World {
         parent ? [local[0] + parent[0], local[1] + parent[1], local[2] + parent[2]] : local,
       );
     }
+    // views framed on two things at once look at the point halfway
+    const ref = (id: string) => (this.store.regionById.has(id) ? `region:${id}` : id);
+    for (const v of this.store.data.views) {
+      const a = this.positions.get(ref(v.focus));
+      const b = v.also ? this.positions.get(ref(v.also)) : undefined;
+      if (a && b) {
+        this.positions.set(`view:${v.id}`, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]);
+      }
+    }
   }
 
   frame(dt: number) {
@@ -342,7 +365,10 @@ export class World {
     );
     // the sky sphere only holds stars with no distance; once we leave the Sun they would be in the wrong place
     this.skyMat.uniforms.opacity.value = 1 - Stars3D.presence(camDist);
-    this.stars3d.update(1, Math.hypot(cx, cy, cz), camDist);
+    const galaxy = Galaxy.presence(sunDist);
+    this.galaxy.update(this.height, cam.fov, sunDist);
+    // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
+    this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
     for (const o of this.deepSky) {
       if (o.glow) {
         const d = Math.hypot(o.pos[0] - cx, o.pos[1] - cy, o.pos[2] - cz);
@@ -479,7 +505,8 @@ export class World {
       const d = at
         ? Math.hypot(at.pos[0] - this.camPos[0], at.pos[1] - this.camPos[1], at.pos[2] - this.camPos[2])
         : camDist;
-      if (d < reg.view / 9 || d > reg.view * 6) {
+      // galaxies stand alone in empty space, so their names can stay on much further out
+      if (d < reg.view / 9 || d > reg.view * (reg.at?.type === 'galaxy' ? 20 : 6)) {
         continue;
       }
       if (at) {
@@ -521,7 +548,27 @@ export class World {
       }
     }
 
-    if (Stars3D.presence(camDist) > 0.3) {
+    const galaxy = Galaxy.presence(Math.hypot(...this.camPos));
+    if (galaxy > 0.5) {
+      for (const arm of ARMS) {
+        const r = ARM_LABEL_R[arm.id];
+        const s = this.screenOf(galactic(r, armBeta(arm, r), 0));
+        if (s) {
+          const text = t.arms.get(arm.id) ?? arm.id;
+          entries.push({
+            id: `arm:${arm.id}`,
+            text,
+            x: s.x,
+            y: s.y,
+            priority: 30,
+            color: '#a598f0',
+            className: 'region',
+            offset: -((text.length * 6.6) / 2),
+          });
+        }
+      }
+    }
+    if (Stars3D.presence(camDist) > 0.3 && galaxy < 0.5) {
       const exposure = Stars3D.exposure(Math.hypot(...this.camPos));
       const bright: { i: number; name: string; mag: number; x: number; y: number }[] = [];
       for (const [i, name] of this.stars.labels) {

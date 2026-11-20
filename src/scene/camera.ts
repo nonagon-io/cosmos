@@ -1,8 +1,8 @@
 import { MathUtils, PerspectiveCamera } from 'three';
 import type { Vec } from '../astro/kepler';
 
-// about 4,700 light years, room to see the 3,000 ly star field whole
-export const MAX_DISTANCE = 3e8;
+// about 600,000 light years: the whole Milky Way and the Magellanic Clouds
+export const MAX_DISTANCE = 4e10;
 const ROTATE_PER_PX = 0.0055;
 const ZOOM_PER_WHEEL = 0.0016;
 
@@ -17,6 +17,8 @@ interface Flight {
   t: number;
   duration: number;
   done?: () => void;
+  // the look direction to end on, if not straight at the target
+  end?: Vec;
 }
 
 // share of the flight spent turning to face the target, and when the move toward it starts
@@ -112,7 +114,7 @@ export class CameraRig {
    * Flies to `id` and settles at `distance` AU from it: the camera first turns where it stands until the
    * target is dead ahead, then moves straight in.
    */
-  flyTo(id: string, distance: number, done?: () => void) {
+  flyTo(id: string, distance: number, done?: () => void, end?: Vec) {
     const fromId = this.focusId;
     const start: Vec = [...this.focusPos];
     // follow wherever the old focus moves to during the flight
@@ -137,8 +139,9 @@ export class CameraRig {
       l0: this.distance,
       d1,
       t: 0,
-      duration: MathUtils.clamp(1.1 + span * 0.42 + turn * 0.35, 1.1, 5.5),
+      duration: MathUtils.clamp(1.1 + span * 0.42 + turn * 0.35 + (end ? 1 : 0), 1.1, 6.5),
       done,
+      end,
     };
     this.focusId = id;
     this.targetDistance = d1;
@@ -209,7 +212,10 @@ export class CameraRig {
         this.distance = look;
         this.lookAlong(dir);
       } else {
-        if (f.t - dt / f.duration < TURN_END) {
+        if (f.end) {
+          // swing round the target on the way in, to finish looking along `end`
+          this.lookAlong(slerp(dir1, f.end, easeInOut((t - TURN_END) / (1 - TURN_END))));
+        } else if (f.t - dt / f.duration < TURN_END) {
           this.lookAlong(dir1);
         }
         for (let c = 0; c < 3; c++) {
@@ -249,7 +255,7 @@ export class CameraRig {
     // close to a surface the near plane has to come in with the camera
     const min = this.minDistanceOf(this.focusId);
     cam.near = Math.max(1e-12, Math.min(this.distance * 1e-3, (this.distance - min / 1.05) * 0.2));
-    cam.far = 1e9;
+    cam.far = 1e11;
     cam.updateProjectionMatrix();
 
     // scene axes are ecliptic x, z, -y (y up = ecliptic north)

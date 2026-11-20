@@ -47,3 +47,14 @@
   name: ดาวที่วัดระยะได้
   focus: sun
   distance: 190000000
+- id: milky-way
+  name: ทางช้างเผือก
+  focus: milky-way
+  distance: 12000000000
+  tilt: 55
+- id: magellanic
+  name: เมฆแมเจลลัน
+  focus: milky-way
+  also: lmc
+  distance: 27000000000
+  tilt: 30

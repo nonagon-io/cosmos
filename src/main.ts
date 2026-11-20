@@ -1,7 +1,8 @@
+import { galaxyLook } from './scene/galaxy';
 import './styles.css';
 import { Ephemeris, type OrbitData } from './astro/ephemeris';
 import { loadLocalized } from './data/load';
-import { type Body, DataError, type Region, type SpaceEvent } from './data/schema';
+import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
 import type { ElementSets } from './scene/particles';
 import type { StarData, StarField } from './scene/stars';
@@ -145,7 +146,9 @@ async function start() {
     },
     goToRegion(r: Region) {
       store.select({ kind: 'region', region: r });
-      rig.flyTo(r.at ? `region:${r.id}` : 'sun', r.view);
+      // edge on, the whole disk piles up in one line of sight; look at the Galaxy and its centre from above
+      const above = r.at?.home || r.at?.type === 'blackhole';
+      rig.flyTo(r.at ? `region:${r.id}` : 'sun', r.view, undefined, above ? galaxyLook(55) : undefined);
     },
     goToEvent(e: SpaceEvent) {
       store.setPlaying(false);
@@ -153,8 +156,9 @@ async function start() {
       store.select({ kind: 'event', event: e });
       rig.flyTo(e.focus, e.distance);
     },
-    goToView(focus: string, distance: number) {
-      rig.flyTo(focus, distance);
+    goToView(v: View) {
+      const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
+      rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? undefined : galaxyLook(v.tilt));
     },
     positionOf: (id: string) => world.positions.get(id) ?? null,
     velocityOf: (id: string) => eph.velocity(id, store.day),

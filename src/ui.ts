@@ -1,6 +1,6 @@
 import { dateOf, KM_PER_AU } from './astro/ephemeris';
 import { periodDays, type Vec } from './astro/kepler';
-import type { Body, Region, SpaceEvent } from './data/schema';
+import type { Body, Region, SpaceEvent, View } from './data/schema';
 import { esc, fmtDistance, fmtLightTime, fmtMass, fmtPeriod } from './format';
 import { t } from './i18n';
 import { AU_PER_LY } from './scene/stars';
@@ -13,7 +13,7 @@ export interface Actions {
   chase(on?: boolean): boolean;
   goToRegion(r: Region): void;
   goToEvent(e: SpaceEvent): void;
-  goToView(focus: string, distance: number): void;
+  goToView(view: View): void;
   positionOf(id: string): Vec | null;
   velocityOf(id: string): Vec | null;
   camera(): { focus: string; distance: number };
@@ -46,7 +46,7 @@ export function setupUI(store: Store, act: Actions) {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-v]');
     if (b) {
       const v = store.data.views[Number(b.dataset.v)];
-      act.goToView(v.focus, v.distance);
+      act.goToView(v);
     }
   });
   const cam = $('cam');
@@ -71,6 +71,9 @@ export function setupUI(store: Store, act: Actions) {
     const name =
       store.bodyById.get(focus)?.name ??
       (focus.startsWith('region:') ? store.regionById.get(focus.slice(7))?.name : undefined) ??
+      (focus.startsWith('view:')
+        ? store.data.views.find((v) => `view:${v.id}` === focus)?.name
+        : undefined) ??
       '';
     const text = `${t.camera}<strong>${fmtDistance(distance)}</strong>${esc(t.from(name))}`;
     if (text !== lastCam) {
@@ -90,7 +93,8 @@ export function setupUI(store: Store, act: Actions) {
     let bestD = 0.35;
     for (const [i, v] of store.data.views.entries()) {
       const d = Math.abs(Math.log10(distance / v.distance));
-      if (d < bestD && (v.focus === focus || v.focus === 'sun')) {
+      const at = v.also ? `view:${v.id}` : v.focus;
+      if (d < bestD && (at === focus || `region:${at}` === focus || v.focus === 'sun')) {
         best = i;
         bestD = d;
       }
@@ -209,13 +213,14 @@ export function setupUI(store: Store, act: Actions) {
   const regionCard = (r: Region) => {
     const at = r.at;
     const rows = at
-      ? `<dt>${t.distSun}</dt><dd>${fmtDistance(at.ly * AU_PER_LY)}</dd><dt>${t.size}</dt><dd>${fmtDistance(at.radius * 2 * AU_PER_LY)}</dd>`
+      ? `<dt>${at.home ? t.distCentre : t.distSun}</dt><dd>${fmtDistance(at.ly * AU_PER_LY)}</dd><dt>${t.size}</dt><dd>${fmtDistance(at.radius * 2 * AU_PER_LY)}</dd>`
       : `<dt>${t.span}</dt><dd>${fmtDistance(r.inner ?? 0)} – ${fmtDistance(r.outer ?? 0)}<small>${esc(t.lightTime(fmtLightTime(r.outer ?? 0)))}</small></dd>`;
     return `
       <p class="eyebrow">${at ? t.dsoKinds[at.type] : t.region}${r.model ? ` · ${t.model}` : ''}</p>
       <h2>${esc(r.name)}</h2><p class="sub"></p>
       <dl>${rows}</dl>
       ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
+      ${at?.home ? `<p class="note">${esc(t.galaxyModel)}</p>` : ''}
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}

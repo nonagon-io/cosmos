@@ -225,8 +225,9 @@ export class Stars3D {
     return 3 * Math.log10(Math.max(1, sunDist / AU_PER_LY / 15));
   }
 
-  update(pixelRatio: number, sunDist: number, camDist: number) {
+  update(pixelRatio: number, sunDist: number, camDist: number, opacity = 1) {
     this.mat.uniforms.scale.value = pixelRatio;
+    this.mat.uniforms.opacity.value = opacity;
     this.mat.uniforms.exposure.value = Stars3D.exposure(sunDist);
     // tens of thousands of faint stars piled up read as a white wall; keep the faint ones quieter out there
     this.mat.uniforms.floor.value = 0.25 * (1 - 0.65 * Stars3D.presence(camDist));

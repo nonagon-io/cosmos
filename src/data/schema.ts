@@ -75,12 +75,14 @@ const Region = z.object({
   // for a nebula the color of the glow drawn for it
   at: z
     .object({
-      type: z.enum(['cluster', 'nebula']),
+      type: z.enum(['cluster', 'nebula', 'galaxy', 'blackhole']),
       ra: z.number(),
       dec: z.number(),
       ly: z.number().positive(),
       radius: z.number().positive(),
       glow: color.optional(),
+      // the Galaxy we are in: its RA/Dec and distance are those of its centre, and its shape is a model
+      home: z.boolean().optional(),
     })
     .optional(),
   view: z.number().positive(),
@@ -92,7 +94,16 @@ const Region = z.object({
   desc: z.string(),
 });
 
-const View = z.object({ id, name: z.string(), focus: id, distance: z.number().positive() });
+const View = z.object({
+  id,
+  name: z.string(),
+  focus: id,
+  distance: z.number().positive(),
+  // degrees above the galactic plane to look from, for views of the whole Galaxy
+  tilt: z.number().optional(),
+  // a second thing to frame along with focus; the camera centres halfway between them
+  also: id.optional(),
+});
 
 const Event = z.object({
   id,
