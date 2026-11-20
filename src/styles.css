@@ -368,6 +368,9 @@ select:focus-visible {
   right: var(--gr);
   width: 236px;
   padding: 14px 10px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100% - 64px - var(--top) - var(--tl-h, 120px) - 14px - var(--bottom) - 12px);
 }
 
 .scale ol {
@@ -375,8 +378,12 @@ select:focus-visible {
   margin: 0;
   padding: 0;
   display: grid;
+  align-content: start;
   gap: 1px;
   position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .scale li button {

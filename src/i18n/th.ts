@@ -210,7 +210,7 @@ export const th = {
   dataErrorHint: 'แก้ไฟล์ใน data/ แล้วหน้านี้จะโหลดใหม่เอง',
   loadError: 'โหลดข้อมูลวงโคจรไม่สำเร็จ ลองโหลดหน้าใหม่',
   credits:
-    'ข้อมูล: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · ภาพพื้นผิว: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · ทางช้างเผือก: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0) · กาแล็กซีแคระ: Local Volume Database (Pace 2024)',
+    'ข้อมูล: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · ภาพพื้นผิว: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · ทางช้างเผือก: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0) · กาแล็กซีแคระ: Local Volume Database (Pace 2024) · กาแล็กซีใกล้เคียง: UNGC (Karachentsev 2013), PGC (Paturel 2003)',
 };
 
 export type Dict = typeof th;

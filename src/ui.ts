@@ -101,7 +101,11 @@ export function setupUI(store: Store, act: Actions) {
       }
     }
     for (const b of views.querySelectorAll<HTMLElement>('[data-v]')) {
-      b.setAttribute('aria-current', String(Number(b.dataset.v) === best));
+      const now = Number(b.dataset.v) === best;
+      if (now && b.getAttribute('aria-current') !== 'true') {
+        b.scrollIntoView({ block: 'nearest' });
+      }
+      b.setAttribute('aria-current', String(now));
     }
   };
 

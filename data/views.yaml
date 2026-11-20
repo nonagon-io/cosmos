@@ -69,3 +69,8 @@
   focus: milky-way
   distance: 900000000000
   tilt: 35
+- id: local-volume
+  name: กาแล็กซีในรัศมี 35 ล้านปีแสง
+  focus: milky-way
+  distance: 3000000000000
+  tilt: 35

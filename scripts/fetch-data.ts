@@ -735,6 +735,137 @@ async function localGroup() {
   save('localgroup.json', out);
 }
 
+// ---- the Local Volume ----
+
+// Every galaxy within about 11 Mpc in the Updated Nearby Galaxy Catalog (Karachentsev et al. 2013), past the 3 Mpc
+// the Local Volume Database covers above, plus the few big ones closer in that it leaves out because they are not
+// dwarfs. The catalogue has each galaxy's size, axis ratio and inclination but not which way it lies on the sky,
+// so the position angle comes from the PGC (Paturel et al. 2003), matched by position. It has none for round,
+// face-on disks and a few of the best known are off, so those are set by hand from the papers that measured them.
+const VIZIER = 'https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-out.all&-out.max=200000&-source=';
+const LV_CLOSE = new Set(['Maffei1', 'Maffei2', 'Dw1', 'Dw2']);
+const LV_ANGLES: Record<string, { pa: number; incl?: number }> = {
+  NGC0628: { pa: 20, incl: 7 }, // M74, Walter et al. 2008 (THINGS)
+  NGC3184: { pa: 179, incl: 16 }, // THINGS
+  MESSIER101: { pa: 39, incl: 18 }, // THINGS
+  NGC6946: { pa: 63, incl: 33 }, // THINGS
+  NGC3344: { pa: 155, incl: 18 }, // Verdes-Montenegro et al. 2000
+  NGC5194: { pa: 173, incl: 22 }, // M51, Colombo et al. 2014
+  NGC5236: { pa: 45, incl: 24 }, // M83, Lundgren et al. 2004
+  IC0342: { pa: 37, incl: 31 }, // Crosthwaite et al. 2000
+  NGC4258: { pa: 150, incl: 72 }, // M106, van Albada 1980
+  NGC4594: { pa: 90, incl: 84 }, // Sombrero, Emsellem 1995
+  NGC3115: { pa: 43 }, // Capaccioli et al. 1987
+  Maffei1: { pa: 84 }, // Fingerhut et al. 2003
+  Maffei2: { pa: 26, incl: 67 }, // Hurt et al. 1996
+  Dw1: { pa: 113, incl: 50 }, // Dwingeloo 1, Burton et al. 1996
+};
+
+async function vizier(source: string) {
+  let lines: string[] = [];
+  // the mirror now and then answers with an empty table; asking again is enough
+  for (let k = 0; k < 4 && !lines.length; k++) {
+    lines = (await (await fetch(VIZIER + source)).text())
+      .split('\n')
+      .filter((l) => l.trim() && !l.startsWith('#'));
+    if (!lines.length) {
+      await sleep(2000);
+    }
+  }
+  const head = lines[0].split('\t').map((h) => h.trim());
+  return lines
+    .slice(3)
+    .map((l) => l.split('\t'))
+    .filter((r) => r.length === head.length)
+    .map((r) => Object.fromEntries(head.map((h, i) => [h, r[i].trim()])));
+}
+
+const sexagesimal = (s: string, hours: boolean) => {
+  const [a, b, c = '0'] = s.split(/\s+/);
+  const v = Math.abs(Number(a)) + Number(b) / 60 + Number(c) / 3600;
+  return (s.startsWith('-') ? -v : v) * (hours ? 15 : 1);
+};
+
+// the catalogue names most Messier galaxies by NGC number
+const MESSIER: Record<string, string> = {
+  NGC0628: 'M74',
+  NGC3351: 'M95',
+  NGC3368: 'M96',
+  NGC3379: 'M105',
+  NGC3623: 'M65',
+  NGC3627: 'M66',
+  NGC4258: 'M106',
+  NGC4594: 'M104',
+  NGC4736: 'M94',
+  NGC4826: 'M64',
+  NGC5055: 'M63',
+  NGC5194: 'M51',
+  NGC5195: 'M51b',
+  NGC5236: 'M83',
+};
+
+// MESSIER081 to M81, NGC0253 to NGC 253
+const prettyName = (n: string) =>
+  MESSIER[n] ??
+  n
+    .replace(/^MESSIER0*(\d+)/, 'M$1')
+    .replace(/^(NGC|IC|UGCA|UGC|DDO|PGC|KK|KKH|KKR|KKS)0*(\d)/, '$1 $2')
+    .replace(/^Maffei(\d)/, 'Maffei $1')
+    .replace(/^Dw(\d)/, 'Dwingeloo $1');
+
+async function localVolume() {
+  console.log('local volume');
+  const pas = new Map<string, { ra: number; dec: number; pa: number }[]>();
+  // only galaxies over a minute of arc across, which every one in the Local Volume is
+  for (const r of await vizier('VII/237&logD25=%3E0.9')) {
+    if (!r.PA) {
+      continue;
+    }
+    const ra = sexagesimal(r.RAJ2000, true);
+    const dec = sexagesimal(r.DEJ2000, false);
+    const key = `${Math.round(ra)},${Math.round(dec)}`;
+    pas.set(key, [...(pas.get(key) ?? []), { ra, dec, pa: Number(r.PA) }]);
+  }
+  const paAt = (ra: number, dec: number) => {
+    let best: { d: number; pa: number } | null = null;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (const c of pas.get(`${Math.round(ra) + dx},${Math.round(dec) + dy}`) ?? []) {
+          const d = Math.hypot((c.ra - ra) * Math.cos((dec * Math.PI) / 180), c.dec - dec) * 60;
+          if (d < 1 && (!best || d < best.d)) {
+            best = { d, pa: c.pa };
+          }
+        }
+      }
+    }
+    return best?.pa ?? null;
+  };
+  // name, RA, Dec (deg), distance (Mpc), Holmberg diameter (kpc), axis ratio, inclination (deg), morphological
+  // type T, absolute B magnitude, position angle (deg, or null when none is known)
+  const out: [string, number, number, number, number, number, number, number, number, number | null][] = [];
+  for (const r of await vizier('J/AJ/145/101')) {
+    const mpc = Number(r.Dist);
+    if (!mpc || (mpc <= 3 && !LV_CLOSE.has(r.Name)) || r.Name === 'Milky Way') {
+      continue;
+    }
+    const ra = sexagesimal(r.RAJ2000, true);
+    const dec = sexagesimal(r.DEJ2000, false);
+    out.push([
+      prettyName(r.Name),
+      round(ra, 6),
+      round(dec, 6),
+      mpc,
+      Number(r.A26) || 3,
+      Number(r['b/a']) || 1,
+      LV_ANGLES[r.Name]?.incl ?? (Number(r.i) || 0),
+      r.TT === '' ? 10 : Number(r.TT),
+      Number(r.BMag) || -14,
+      LV_ANGLES[r.Name]?.pa ?? paAt(ra, dec),
+    ]);
+  }
+  save('localvolume.json', out);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -743,6 +874,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   spacecraft,
   stars,
   localGroup,
+  localVolume,
   textures,
 };
 const pick = process.argv.slice(2);

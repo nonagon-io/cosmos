@@ -5,6 +5,7 @@ import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
+import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
 import { eclipticDir, type StarData, type StarField } from './scene/stars';
 import { World } from './scene/world';
@@ -63,8 +64,9 @@ async function start() {
   let stars: StarData;
   let field: StarField;
   let localGroup: LocalGroupRow[];
+  let localVolume: LocalVolumeRow[];
   try {
-    const [moons, named, craft, planets, small, starData, lgData, fieldData] = await Promise.all([
+    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData] = await Promise.all([
       json<OrbitData['moons']>('moons.json'),
       json<OrbitData['named']>('named.json'),
       json<OrbitData['craft']>('spacecraft.json'),
@@ -72,6 +74,7 @@ async function start() {
       json<ElementSets>('small-bodies.json'),
       json<StarData>('stars.json'),
       json<LocalGroupRow[]>('localgroup.json'),
+      json<LocalVolumeRow[]>('localvolume.json'),
       fetch(`${BASE}data/field.bin`).then((r) => {
         if (!r.ok) {
           throw new Error(`field.bin: ${r.status}`);
@@ -83,6 +86,7 @@ async function start() {
     sets = small;
     stars = starData;
     localGroup = lgData;
+    localVolume = lvData;
     field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);
@@ -105,6 +109,7 @@ async function start() {
     stars,
     field,
     localGroup,
+    localVolume,
     (id) => pickLabel(id),
   );
   const rig = world.rig;

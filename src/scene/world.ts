@@ -22,6 +22,7 @@ import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
 import { LocalGroup, type LocalGroupRow, M31_SYSTEM } from './localgroup';
+import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
@@ -120,6 +121,7 @@ export class World {
   private readonly stars3d: Stars3D;
   private readonly galaxy: Galaxy;
   private readonly localGroup: LocalGroup;
+  private readonly localVolume: LocalVolume;
   // Sgr A*'s disk is ray traced per pixel, which filling the screen can cost more than a slow GPU has. It gets a
   // pixel budget, past which it is drawn smaller and scaled up; the budget grows while frames keep up and shrinks
   // while they don't, so a fast GPU ends up at full resolution.
@@ -145,6 +147,7 @@ export class World {
     readonly stars: StarData,
     field: StarField,
     localGroup: LocalGroupRow[],
+    localVolume: LocalVolumeRow[],
     onPick: (id: string) => void,
   ) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -224,6 +227,11 @@ export class World {
     });
     const home = this.deepSky.find((o) => store.regionById.get(o.id.slice(7))?.at?.home);
     this.localGroup = new LocalGroup(this.world, localGroup, spirals, home?.base ?? [0, 0, 0]);
+    this.localVolume = new LocalVolume(
+      this.world,
+      localVolume,
+      this.deepSky.map((o) => o.base),
+    );
     const hole = store.data.regions.find((r) => r.at?.type === 'blackhole');
     const holePos = hole && this.deepSky.find((o) => o.id === `region:${hole.id}`)?.pos;
     if (hole?.at && holePos) {
@@ -315,6 +323,7 @@ export class World {
     const drift = this.localGroup.driftAt(this.store.myr);
     this.galaxy.setTime(this.store.myr);
     this.localGroup.setTime(shift, drift, this.store.myr);
+    this.localVolume.setTime(shift);
     for (const o of this.deepSky) {
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));
@@ -449,6 +458,7 @@ export class World {
     }
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
+    this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
@@ -714,6 +724,24 @@ export class World {
             x: s.x,
             y: s.y,
             priority: 25 - d.mag,
+            color: '#b9c6e6',
+            className: 'region',
+            offset: 7,
+          });
+        }
+      }
+    }
+    // the brightest galaxies past the Local Group, once out among them
+    if (LocalVolume.labelled(Math.hypot(...this.camPos)) && Galaxy.presence(camDist) > 0.3) {
+      for (const d of this.localVolume.named) {
+        const s = this.screenOf(this.localVolume.placeOf(d.at));
+        if (s) {
+          entries.push({
+            id: `lv:${d.name}`,
+            text: d.name,
+            x: s.x,
+            y: s.y,
+            priority: 20 - d.mag,
             color: '#b9c6e6',
             className: 'region',
             offset: 7,

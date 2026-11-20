@@ -14,3 +14,4 @@ milky-way: { name: The Milky Way }
 magellanic: { name: Magellanic Clouds }
 local-group: { name: The Local Group }
 nearby-galaxies: { name: Nearby galaxies }
+local-volume: { name: Galaxies within 35 million light years }

@@ -198,5 +198,5 @@ export const en: Dict = {
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',
   loadError: 'Could not load the orbit data. Try reloading the page.',
   credits:
-    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Milky Way: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0) · Dwarf galaxies: Local Volume Database (Pace 2024)',
+    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Milky Way: NASA/JPL-Caltech/ESO/R. Hurt (CC BY 4.0) · Dwarf galaxies: Local Volume Database (Pace 2024) · Nearby galaxies: UNGC (Karachentsev 2013), PGC (Paturel 2003)',
 };

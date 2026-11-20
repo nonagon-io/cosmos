@@ -50,7 +50,8 @@ export class Labels {
       const x0 = e.x + e.offset;
       const y0 = e.y - HEIGHT / 2;
       const box: [number, number, number, number] = [x0 - 2, y0 - 1, x0 + w + 2, y0 + HEIGHT + 1];
-      if (placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) {
+      const off = box[0] < 0 || box[1] < 0 || box[2] > innerWidth || box[3] > innerHeight;
+      if (off || placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) {
         continue;
       }
       placed.push(box);
