@@ -221,6 +221,7 @@ export function setupUI(store: Store, act: Actions) {
       <dl>${rows}</dl>
       ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
       ${at?.home ? `<p class="note">${esc(t.galaxyModel)}</p>` : ''}
+      ${at?.type === 'blackhole' ? `<p class="note">${esc(t.blackholeModel)}</p>` : ''}
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}

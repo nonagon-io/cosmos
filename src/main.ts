@@ -5,7 +5,7 @@ import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
 import type { ElementSets } from './scene/particles';
-import type { StarData, StarField } from './scene/stars';
+import { eclipticDir, type StarData, type StarField } from './scene/stars';
 import { World } from './scene/world';
 import { setupSearch } from './search';
 import { Store } from './store';
@@ -128,6 +128,11 @@ async function start() {
     return Math.max(r * 6, b.kind === 'planet' ? r * 9 : r * 6);
   };
 
+  // around a black hole, look the way we see it from Earth, so the S-star orbits look like the published ones
+  const lineOfSight = (id: string) => {
+    const at = store.regionById.get(id)?.at;
+    return at?.type === 'blackhole' ? eclipticDir(at.ra, at.dec) : undefined;
+  };
   const actions = {
     goToBody(b: Body) {
       store.select({ kind: 'body', body: b });
@@ -147,18 +152,27 @@ async function start() {
     goToRegion(r: Region) {
       store.select({ kind: 'region', region: r });
       // edge on, the whole disk piles up in one line of sight; look at the Galaxy and its centre from above
-      const above = r.at?.home || r.at?.type === 'blackhole';
-      rig.flyTo(r.at ? `region:${r.id}` : 'sun', r.view, undefined, above ? galaxyLook(55) : undefined);
+      rig.flyTo(
+        r.at ? `region:${r.id}` : 'sun',
+        r.view,
+        undefined,
+        r.at?.home ? galaxyLook(55) : lineOfSight(r.id),
+      );
     },
     goToEvent(e: SpaceEvent) {
       store.setPlaying(false);
       store.setDay(store.eventDay(e));
       store.select({ kind: 'event', event: e });
-      rig.flyTo(e.focus, e.distance);
+      rig.flyTo(
+        store.regionById.has(e.focus) ? `region:${e.focus}` : e.focus,
+        e.distance,
+        undefined,
+        lineOfSight(e.focus),
+      );
     },
     goToView(v: View) {
       const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
-      rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? undefined : galaxyLook(v.tilt));
+      rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? lineOfSight(v.focus) : galaxyLook(v.tilt));
     },
     positionOf: (id: string) => world.positions.get(id) ?? null,
     velocityOf: (id: string) => eph.velocity(id, store.day),

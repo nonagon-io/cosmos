@@ -29,7 +29,7 @@ orion-nebula:
 milky-way:
   desc: The barred spiral galaxy the Solar System is in, with some 100–400 billion stars. The disk is about 100,000 light years across but only about a thousand thick. The Sun is some 26,700 light years from the centre, in the Orion Arm, and goes round it once every 230 million years or so, only about 20 times since it formed. The pale band across the night sky is this disk seen from inside.
 sgr-a:
-  desc: The supermassive black hole at the centre of the Galaxy, about 4.3 million times the Sun's mass and 26,700 light years away towards Sagittarius. Dust hides it completely in visible light. Astronomers proved it is there from the orbits of the stars around it (the 2020 Nobel Prize in Physics), and the Event Horizon Telescope imaged its shadow in 2022.
+  desc: The supermassive black hole at the centre of the Galaxy, about 4.3 million times the Sun's mass and 26,700 light years away towards Sagittarius. Dust hides it completely in visible light. Astronomers proved it is there from the orbits of the S-stars around it (the 2020 Nobel Prize in Physics). S2 goes round every 16 years and swings within about 120 AU at nearly 3% of the speed of light. Every star shown here follows its measured orbit, so try speeding up time. The Event Horizon Telescope imaged the ring around its shadow in 2022; it is about 0.4 AU across, smaller than Mercury's orbit.
 lmc:
   desc: The largest satellite galaxy of the Milky Way, about 163,000 light years away, a naked-eye smudge in the southern sky. Supernova 1987A, the brightest of modern times, went off in it.
 smc:

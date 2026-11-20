@@ -275,3 +275,19 @@
   focus: halley
   distance: 2.5
   importance: 3
+
+- id: s2-pericentre-2018
+  date: '2018-05-19'
+  title: ดาว S2 เฉียดหลุมดำใจกลางกาแล็กซี
+  desc: S2 วิ่งผ่านจุดใกล้ Sgr A* ที่สุดราว 120 AU ด้วยความเร็ว 7,650 กม./วินาที ทีม GRAVITY วัดได้ว่าแสงของมันยืดออกเพราะแรงโน้มถ่วง ตรงกับทฤษฎีสัมพัทธภาพของไอน์สไตน์
+  focus: sgr-a
+  distance: 800
+  importance: 2
+
+- id: s2-pericentre-2034
+  date: '2034-06-05'
+  title: ดาว S2 จะเฉียดหลุมดำอีกครั้ง
+  desc: ครบรอบ 16 ปีหลังปี 2018 วันที่คำนวณจากวงโคจรที่วัดได้
+  focus: sgr-a
+  distance: 800
+  importance: 1

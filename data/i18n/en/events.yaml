@@ -81,3 +81,9 @@ apophis-2029:
   desc: About 32,000 km above the surface, closer than geostationary satellites, and visible to the naked eye from Europe and Africa.
 bernardinelli-2031: { title: Giant comet Bernardinelli–Bernstein at perihelion }
 halley-2061: { title: Halley's Comet returns again }
+s2-pericentre-2018:
+  title: S2 swings past the Galaxy's black hole
+  desc: S2 passed about 120 AU from Sgr A* at 7,650 km/s. The GRAVITY team measured its light being stretched by gravity, as Einstein's relativity predicts.
+s2-pericentre-2034:
+  title: S2 swings past the black hole again
+  desc: Sixteen years after 2018; the date comes from the measured orbit.

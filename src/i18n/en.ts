@@ -95,6 +95,8 @@ export const en: Dict = {
     ['perseus', 'Perseus Arm'],
     ['outer', 'Outer Arm'],
   ]),
+  blackholeModel:
+    "Seen from Earth's direction, the black hole is the real EHT image (2022) at its real size: radio light given false colour, blurred by the telescope's resolution and averaged over several nights. No eye could see it like this. Turn to look from any other side and it becomes a simulation, since nobody has seen it from there. The S-star orbits are the measured ones, though the depth along our line of sight is less certain than the rest.",
   galaxyModel:
     "Simulated: nobody has seen the Milky Way from outside, because we are in it. This shape is built from the models astronomers have measured. What is real is its size, the Sun's distance from the centre (about 26,700 light years), the tilt of the galactic plane on our sky, and the spiral arms on our side, placed by maser distances. The far side, hidden behind dust, carries the same arms on. The points are not real stars.",
   starField:
@@ -175,5 +177,5 @@ export const en: Dict = {
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',
   loadError: 'Could not load the orbit data. Try reloading the page.',
   credits:
-    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI',
+    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Sgr A*: EHT Collaboration/ESO (CC BY 4.0)',
 };

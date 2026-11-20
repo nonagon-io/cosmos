@@ -23,10 +23,12 @@ import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
+import { SgrA } from './sgra';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
 import { CometTails } from './tails';
 import { haze } from './textures';
 
+const LY_PER_PC = 3.26156;
 // star names shown at once out among the stars
 const STAR_LABELS = 24;
 // where along each spiral arm its name goes, as a galactocentric radius in kpc
@@ -95,6 +97,7 @@ export class World {
   private readonly tails: CometTails;
   private readonly stars3d: Stars3D;
   private readonly galaxy: Galaxy;
+  private readonly sgr: SgrA | null = null;
   private readonly skyMat: ShaderMaterial;
   private readonly labels: Labels;
   private width = 1;
@@ -176,6 +179,11 @@ export class World {
       this.world,
       this.deepSky.filter((o) => store.regionById.get(o.id.slice(7))?.at?.type === 'galaxy' && o.glow),
     );
+    const hole = store.data.regions.find((r) => r.at?.type === 'blackhole');
+    const holePos = hole && this.deepSky.find((o) => o.id === `region:${hole.id}`)?.pos;
+    if (hole?.at && holePos) {
+      this.sgr = new SgrA(this.world, holePos, hole.at.ra, hole.at.dec, hole.at.ly / LY_PER_PC);
+    }
 
     const { focus, distance } = store.data.timeline.initialView;
     this.rig = new CameraRig(
@@ -191,7 +199,9 @@ export class World {
   minDistance(id: string) {
     const b = this.store.bodyById.get(id);
     if (!b) {
-      return 1e-6;
+      const r = id.startsWith('region:') ? this.store.regionById.get(id.slice(7))?.at : undefined;
+      // stop short of the ring around a black hole
+      return r?.type === 'blackhole' ? r.radius * AU_PER_LY * 1.5 : 1e-6;
     }
     return b.kind === 'spacecraft' ? CRAFT_RADIUS_AU : (this.visuals.get(id)?.radiusAu ?? 1e-6);
   }
@@ -367,6 +377,10 @@ export class World {
     this.skyMat.uniforms.opacity.value = 1 - Stars3D.presence(camDist);
     const galaxy = Galaxy.presence(sunDist);
     this.galaxy.update(this.height, cam.fov, sunDist);
+    if (this.sgr) {
+      const g = this.sgr.group.position;
+      this.sgr.update(day, [cx - g.x, cy - g.y, cz - g.z]);
+    }
     // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
     this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
     for (const o of this.deepSky) {
@@ -506,7 +520,9 @@ export class World {
         ? Math.hypot(at.pos[0] - this.camPos[0], at.pos[1] - this.camPos[1], at.pos[2] - this.camPos[2])
         : camDist;
       // galaxies stand alone in empty space, so their names can stay on much further out
-      if (d < reg.view / 9 || d > reg.view * (reg.at?.type === 'galaxy' ? 20 : 6)) {
+      const far =
+        reg.at?.type === 'galaxy' ? reg.view * 20 : reg.at?.type === 'blackhole' ? 1e9 : reg.view * 6;
+      if (d < (reg.at?.type === 'blackhole' ? 0 : reg.view / 9) || d > far) {
         continue;
       }
       if (at) {
@@ -549,6 +565,23 @@ export class World {
     }
 
     const galaxy = Galaxy.presence(Math.hypot(...this.camPos));
+    if (this.sgr?.group.visible) {
+      for (const [k, name] of this.sgr.stars.entries()) {
+        const s = this.screenOf(this.sgr.positionOf(k));
+        if (s) {
+          entries.push({
+            id: `sstar:${name}`,
+            text: name,
+            x: s.x,
+            y: s.y,
+            priority: 40,
+            color: '#cfe0ff',
+            className: 'region',
+            offset: 8,
+          });
+        }
+      }
+    }
     if (galaxy > 0.5) {
       for (const arm of ARMS) {
         const r = ARM_LABEL_R[arm.id];
