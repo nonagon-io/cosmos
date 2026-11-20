@@ -58,3 +58,14 @@
   also: lmc
   distance: 27000000000
   tilt: 30
+- id: local-group
+  name: กลุ่มกาแล็กซีท้องถิ่น
+  focus: milky-way
+  also: andromeda
+  distance: 280000000000
+  tilt: 35
+- id: nearby-galaxies
+  name: กาแล็กซีใกล้เคียง
+  focus: milky-way
+  distance: 900000000000
+  tilt: 35

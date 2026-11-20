@@ -21,6 +21,7 @@ import { CameraRig } from './camera';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
+import { LocalGroup, type LocalGroupRow, M31_SYSTEM } from './localgroup';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
 import { SgrA } from './sgra';
@@ -32,6 +33,12 @@ const LY_PER_PC = 3.26156;
 // star names shown at once out among the stars
 const STAR_LABELS = 24;
 // where along each spiral arm its name goes, as a galactocentric radius in kpc
+// camera distances in light years where the timeline turns to millions of years and back, apart so it
+// doesn't flicker between the two
+const DEEP_IN = 6000;
+const DEEP_OUT = 4500;
+// light years from the Sun beyond which the dwarf galaxies get names
+const LOCAL_GROUP_LABELS = 500000;
 const ARM_LABEL_R: Record<string, number> = {
   'scutum-centaurus': 5.6,
   'sagittarius-carina': 6.4,
@@ -82,7 +89,16 @@ export class World {
   // camera position in the ecliptic frame, AU from the Sun
   private camPos: Vec = [0, 0, 0];
   // clusters and nebulae: fixed ecliptic positions in AU, and a glow for the nebulae
-  private readonly deepSky: { id: string; pos: Vec; radius: number; glow: Sprite | null }[] = [];
+  // `pos` is where it is drawn; for things fixed to the Galaxy rather than near the Sun it moves with the
+  // Galaxy's timeline, away from `base`, where it is now
+  private readonly deepSky: {
+    id: string;
+    pos: Vec;
+    base: Vec;
+    galactic: boolean;
+    radius: number;
+    glow: Sprite | null;
+  }[] = [];
   readonly projected = new Map<string, Projected>();
   private readonly scene = new Scene();
   private readonly world = new Group();
@@ -97,7 +113,9 @@ export class World {
   private readonly tails: CometTails;
   private readonly stars3d: Stars3D;
   private readonly galaxy: Galaxy;
+  private readonly localGroup: LocalGroup;
   private readonly sgr: SgrA | null = null;
+  private sgrId = '';
   private readonly skyMat: ShaderMaterial;
   private readonly labels: Labels;
   private width = 1;
@@ -113,6 +131,7 @@ export class World {
     elementSets: ElementSets,
     readonly stars: StarData,
     field: StarField,
+    localGroup: LocalGroupRow[],
     onPick: (id: string) => void,
   ) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -173,15 +192,29 @@ export class World {
         glow.scale.setScalar(r.at.radius * AU_PER_LY * 2.5);
         this.world.add(glow);
       }
-      this.deepSky.push({ id: `region:${r.id}`, pos, radius: r.at.radius * AU_PER_LY, glow });
+      this.deepSky.push({
+        id: `region:${r.id}`,
+        pos,
+        base: [...pos],
+        galactic: r.at.type === 'galaxy' || r.at.type === 'blackhole',
+        radius: r.at.radius * AU_PER_LY,
+        glow,
+      });
     }
     this.galaxy = new Galaxy(
       this.world,
       this.deepSky.filter((o) => store.regionById.get(o.id.slice(7))?.at?.type === 'galaxy' && o.glow),
     );
+    const spirals = this.deepSky.flatMap((o) => {
+      const at = store.regionById.get(o.id.slice(7))?.at;
+      return at && M31_SYSTEM.has(o.id.slice(7)) ? [{ ...o, id: o.id.slice(7), ra: at.ra, dec: at.dec }] : [];
+    });
+    const home = this.deepSky.find((o) => store.regionById.get(o.id.slice(7))?.at?.home);
+    this.localGroup = new LocalGroup(this.world, localGroup, spirals, home?.base ?? [0, 0, 0]);
     const hole = store.data.regions.find((r) => r.at?.type === 'blackhole');
     const holePos = hole && this.deepSky.find((o) => o.id === `region:${hole.id}`)?.pos;
     if (hole?.at && holePos) {
+      this.sgrId = hole.id;
       this.sgr = new SgrA(this.world, holePos, hole.at.ra, hole.at.dec, hole.at.ly / LY_PER_PC);
     }
 
@@ -265,9 +298,21 @@ export class World {
   /** Positions of every body at `day`, parents first. */
   private computePositions(day: number, time: AstroTime) {
     this.positions.clear();
+    const shift = Galaxy.sunShift(this.store.myr);
+    const drift = this.localGroup.driftAt(this.store.myr);
+    this.galaxy.setTime(this.store.myr);
+    this.localGroup.setTime(shift, drift);
     for (const o of this.deepSky) {
+      if (o.galactic) {
+        const moves = M31_SYSTEM.has(o.id.slice(7));
+        for (let i = 0; i < 3; i++) {
+          o.pos[i] = o.base[i] - shift[i] + (moves ? drift[i] : 0);
+        }
+        o.glow?.position.set(...o.pos);
+      }
       this.positions.set(o.id, o.pos);
     }
+    this.sgr?.group.position.set(...(this.positions.get(`region:${this.sgrId}`) ?? [0, 0, 0]));
     for (const b of this.order) {
       if (!this.eph.exists(b.id, day)) {
         continue;
@@ -298,6 +343,11 @@ export class World {
 
   frame(dt: number) {
     const { store } = this;
+    // far enough out, time on the scale of days stands still: switch the timeline to millions of years
+    const out = this.rig.distance / AU_PER_LY;
+    if (store.deep ? out < DEEP_OUT : out > DEEP_IN) {
+      store.setDeep(!store.deep);
+    }
     const day = store.day;
     const time = MakeTime(day);
     this.computePositions(day, time);
@@ -385,6 +435,7 @@ export class World {
       }
     }
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
+    this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
@@ -485,6 +536,12 @@ export class World {
       const b = this.store.bodyById.get(id) as Body;
       const parent = this.projected.get(b.parent ?? 'sun');
       const important = id === selectedId || id === this.rig.focusId;
+      // with the Galaxy drawn bigger than it is the Sun's real place no longer lines up with it, and from the
+      // Local Group its name would only crowd out the Galaxy's
+      const lg = Math.hypot(...this.camPos) > LOCAL_GROUP_LABELS * AU_PER_LY;
+      if (id === 'sun' && (this.galaxy.grow > 1.05 || lg) && !important) {
+        continue;
+      }
       // small things far beyond what the camera is looking at only line up by chance; leave them unlabelled
       const minor = b.kind !== 'planet' && b.kind !== 'star' && b.kind !== 'dwarf';
       if (!important && minor && pr.dist > camDist * 30) {
@@ -523,7 +580,13 @@ export class World {
         : camDist;
       // galaxies stand alone in empty space, so their names can stay on much further out
       const far =
-        reg.at?.type === 'galaxy' ? reg.view * 20 : reg.at?.type === 'blackhole' ? 1e9 : reg.view * 6;
+        reg.at?.type === 'galaxy'
+          ? reg.at.home || M31_SYSTEM.has(reg.id)
+            ? Number.POSITIVE_INFINITY
+            : reg.view * 20
+          : reg.at?.type === 'blackhole'
+            ? 1e9
+            : reg.view * 6;
       if (d < (reg.at?.type === 'blackhole' ? 0 : reg.view / 9) || d > far) {
         continue;
       }
@@ -591,7 +654,7 @@ export class World {
     if (galaxy > 0.5) {
       for (const arm of ARMS) {
         const r = ARM_LABEL_R[arm.id];
-        const s = this.screenOf(galactic(r, armBeta(arm, r), 0));
+        const s = this.screenOf(this.galaxy.place(galactic(r, armBeta(arm, r), 0)));
         if (s) {
           const text = t.arms.get(arm.id) ?? arm.id;
           entries.push({
@@ -603,6 +666,24 @@ export class World {
             color: '#a598f0',
             className: 'region',
             offset: -((text.length * 6.6) / 2),
+          });
+        }
+      }
+    }
+    // the brighter dwarf galaxies, once out at the scale of the Local Group
+    if (Math.hypot(...this.camPos) > LOCAL_GROUP_LABELS * AU_PER_LY && Galaxy.presence(camDist) > 0.3) {
+      for (const d of this.localGroup.named) {
+        const s = this.screenOf(this.localGroup.placeOf(d));
+        if (s) {
+          entries.push({
+            id: `lg:${d.name}`,
+            text: d.name,
+            x: s.x,
+            y: s.y,
+            priority: 25 - d.mag,
+            color: '#b9c6e6',
+            className: 'region',
+            offset: 7,
           });
         }
       }

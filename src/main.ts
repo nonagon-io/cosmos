@@ -4,11 +4,12 @@ import { Ephemeris, type OrbitData } from './astro/ephemeris';
 import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
+import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { ElementSets } from './scene/particles';
 import { eclipticDir, type StarData, type StarField } from './scene/stars';
 import { World } from './scene/world';
 import { setupSearch } from './search';
-import { Store } from './store';
+import { DEEP_RANGE, Store } from './store';
 import { setupTimeline } from './timeline';
 import { setupUI } from './ui';
 
@@ -61,14 +62,16 @@ async function start() {
   let sets: ElementSets;
   let stars: StarData;
   let field: StarField;
+  let localGroup: LocalGroupRow[];
   try {
-    const [moons, named, craft, planets, small, starData, fieldData] = await Promise.all([
+    const [moons, named, craft, planets, small, starData, lgData, fieldData] = await Promise.all([
       json<OrbitData['moons']>('moons.json'),
       json<OrbitData['named']>('named.json'),
       json<OrbitData['craft']>('spacecraft.json'),
       json<OrbitData['planets']>('planets.json'),
       json<ElementSets>('small-bodies.json'),
       json<StarData>('stars.json'),
+      json<LocalGroupRow[]>('localgroup.json'),
       fetch(`${BASE}data/field.bin`).then((r) => {
         if (!r.ok) {
           throw new Error(`field.bin: ${r.status}`);
@@ -79,6 +82,7 @@ async function start() {
     orbitData = { moons, named, craft, planets };
     sets = small;
     stars = starData;
+    localGroup = lgData;
     field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);
@@ -100,6 +104,7 @@ async function start() {
     sets,
     stars,
     field,
+    localGroup,
     (id) => pickLabel(id),
   );
   const rig = world.rig;
@@ -128,10 +133,11 @@ async function start() {
     return Math.max(r * 6, b.kind === 'planet' ? r * 9 : r * 6);
   };
 
-  // around a black hole, look the way we see it from Earth, so the S-star orbits look like the published ones
+  // around a black hole, look the way we see it from Earth, so the S-star orbits look like the published ones;
+  // Andromeda and Triangulum too, so they look as photographed
   const lineOfSight = (id: string) => {
     const at = store.regionById.get(id)?.at;
-    return at?.type === 'blackhole' ? eclipticDir(at.ra, at.dec) : undefined;
+    return at && (at.type === 'blackhole' || M31_SYSTEM.has(id)) ? eclipticDir(at.ra, at.dec) : undefined;
   };
   const actions = {
     goToBody(b: Body) {
@@ -304,7 +310,19 @@ async function start() {
   const loop = (now: number) => {
     const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
     last = now;
-    if (store.playing) {
+    if (store.deep) {
+      if (store.playing) {
+        store.setMyr(store.myr + store.deepSpeed * dt);
+        if (Math.abs(store.myr) === DEEP_RANGE) {
+          store.setPlaying(false);
+        }
+      }
+    } else if (store.myr !== 0) {
+      // back in from the Galaxy: turn it back to the present, where the Solar System's date belongs
+      const m = store.myr * Math.exp(-dt * 2.5);
+      store.setMyr(Math.abs(m) < 0.05 ? 0 : m);
+    }
+    if (store.playing && !store.deep) {
       const prev = store.day;
       const next = Math.min(store.end, Math.max(store.start, prev + store.speed * dt));
       // the day we start from never counts, in either direction, or playback resumed from a stop would stop

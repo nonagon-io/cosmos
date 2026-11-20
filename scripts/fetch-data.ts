@@ -691,6 +691,50 @@ async function textures() {
   }
 }
 
+// ---- the Local Group ----
+
+// Dwarf galaxies from the Local Volume Database (Pace et al. 2024), kept up to date with each new discovery:
+// the confirmed ones within 3 Mpc, which takes in the Local Group and a little past it. The Magellanic Clouds have
+// their own entries in regions.yaml, and so do the spirals, which the database leaves out.
+const LVDB = 'https://raw.githubusercontent.com/apace7/local_volume_database/v1.1.2/data/dwarf_all.csv';
+const LG_SKIP = new Set(['lmc', 'smc']);
+// these move with Andromeda on the Galaxy's timeline
+const M31_HOSTS = new Set(['m_031', 'm_033']);
+
+async function localGroup() {
+  console.log('local group');
+  const res = await fetch(LVDB);
+  const [head, ...lines] = (await res.text()).trim().split('\n');
+  const keys = head.split(',');
+  const num = (v: string | undefined) => (v === undefined || v === '' || v === 'nan' ? null : Number(v));
+  // name, RA and Dec (deg), distance (kpc), half-light radius (pc), absolute V magnitude, M31 when it is in
+  // Andromeda's group, and dIrr for gas-rich ones (else dSph)
+  const out: [string, number, number, number, number, number, string, string][] = [];
+  for (const line of lines) {
+    // no field in the columns used has a comma, but later ones can be quoted; split only up to what we need
+    const cells =
+      line.match(/("([^"]|"")*"|[^,]*)(,|$)/g)?.map((c) => c.replace(/,$/, '').replace(/^"|"$/g, '')) ?? [];
+    const row = Object.fromEntries(keys.map((k, i) => [k, cells[i]]));
+    const kpc = num(row.distance);
+    if (row.confirmed_real !== '1' || LG_SKIP.has(row.key) || !kpc || kpc > 3000) {
+      continue;
+    }
+    const arcmin = num(row.rhalf);
+    const pc = num(row.rhalf_physical) ?? (arcmin ? kpc * 1000 * ((arcmin / 60) * (Math.PI / 180)) : 300);
+    out.push([
+      row.name,
+      round(Number(row.ra), 6),
+      round(Number(row.dec), 6),
+      round(kpc, 4),
+      Math.round(pc),
+      num(row.M_V) ?? -8,
+      M31_HOSTS.has(row.host) ? 'M31' : row.host,
+      num(row.mass_HI) ? 'dIrr' : 'dSph',
+    ]);
+  }
+  save('localgroup.json', out);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -698,6 +742,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   planets,
   spacecraft,
   stars,
+  localGroup,
   textures,
 };
 const pick = process.argv.slice(2);

@@ -34,3 +34,7 @@ lmc:
   desc: The largest satellite galaxy of the Milky Way, about 163,000 light years away, a naked-eye smudge in the southern sky. Supernova 1987A, the brightest of modern times, went off in it.
 smc:
   desc: A dwarf satellite galaxy of the Milky Way, about 200,000 light years away, pulled out of shape by the gravity of the Milky Way and the Large Magellanic Cloud.
+andromeda:
+  desc: The largest spiral in the Local Group, about 2.5 million light years away and the farthest thing easily seen with the naked eye, an oval smudge in Andromeda. It has around a trillion stars, several times the Milky Way's, and it is heading toward us. The light you see tonight left it before there were humans.
+triangulum:
+  desc: The third-largest spiral in the Local Group after Andromeda and the Milky Way, about 2.7 million light years away and probably a satellite of Andromeda. Its loose arms are full of pink star-forming regions. Under a truly dark sky some people can see it with the naked eye.

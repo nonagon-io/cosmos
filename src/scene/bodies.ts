@@ -378,6 +378,9 @@ export class BodyVisual {
       const far = MathUtils.smoothstep(Math.log10(camDist), 5.5, 7);
       glarePx = glarePx * (1 - far) + Math.max(screenR * 7, 7) * far;
       this.glare.scale.setScalar((glarePx * 2) / pxPerAu);
+      // and millions of light years out it would only hide the Galaxy it is in
+      (this.glare.material as SpriteMaterial).opacity =
+        1 - MathUtils.smoothstep(Math.log10(camDist), 10.5, 11.2);
       this.marker.visible = false;
     }
     return screenR;

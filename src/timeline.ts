@@ -2,7 +2,7 @@ import { dateOf, dayOf } from './astro/ephemeris';
 import type { SpaceEvent } from './data/schema';
 import { esc } from './format';
 import { t } from './i18n';
-import { SPEEDS, type Store } from './store';
+import { DEEP_RANGE, SPEEDS, type Store } from './store';
 
 const SLIDER_MAX = 10000;
 const IMPORTANCE_COLOR = { 1: 'var(--event-1)', 2: 'var(--nebula)', 3: 'var(--accent)' } as const;
@@ -62,17 +62,26 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   const playBtn = $<HTMLButtonElement>('play');
   const speeds = $('speeds');
   const reverse = $<HTMLButtonElement>('reverse');
+  const panel = speeds.closest<HTMLElement>('.timeline') as HTMLElement;
+  const stopOpt = $('opt-stop').closest<HTMLElement>('label') as HTMLElement;
+  const prevBtn = $<HTMLButtonElement>('prev-ev');
+  const nextBtn = $<HTMLButtonElement>('next-ev');
 
   const pct = (day: number) => `${(scale.toPos(day) * 100).toFixed(3)}%`;
 
   // ticks, with the current year highlighted
   const nowYear = new Date().getUTCFullYear();
-  ticks.innerHTML = store.data.timeline.ticks
+  const yearTicks = store.data.timeline.ticks
     .map((y) => {
       const day = dayOf(new Date(Date.UTC(y, 0, 1)));
       return `<span style="left:${pct(day)}"${y === nowYear ? ' class="now"' : ''}>${t.year(y)}</span>`;
     })
     .join('');
+  const deepTicks = Array.from({ length: 11 }, (_, i) => {
+    const m = -DEEP_RANGE + i * 50;
+    return `<span style="left:${i * 10}%"${m === 0 ? ' class="now"' : ''}>${t.myrTick(m)}</span>`;
+  }).join('');
+  ticks.innerHTML = yearTicks;
 
   // events: the more important, the taller. Marks closer than MARK_GAP px step up into another lane, the more
   // important ones keeping the lowest lanes.
@@ -141,12 +150,31 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   });
 
   slider.addEventListener('input', () => {
-    store.setDay(scale.toDay(Number(slider.value) / SLIDER_MAX));
+    const v = Number(slider.value) / SLIDER_MAX;
+    if (store.deep) {
+      store.setMyr((v * 2 - 1) * DEEP_RANGE);
+    } else {
+      store.setDay(scale.toDay(v));
+    }
   });
 
-  speeds.innerHTML = SPEEDS.map((_, i) => `<button type="button" data-s="${i}">${t.speeds[i]}</button>`).join(
-    '',
-  );
+  const renderSpeeds = () => {
+    const labels = store.deep ? t.deepSpeeds : t.speeds;
+    speeds.innerHTML = labels.map((l, i) => `<button type="button" data-s="${i}">${l}</button>`).join('');
+  };
+  renderSpeeds();
+  // zoomed out to the Galaxy, days stand still: the timeline counts millions of years and the events go
+  store.on('deep', (on) => {
+    panel.classList.toggle('deep', on);
+    ticks.innerHTML = on ? deepTicks : yearTicks;
+    layoutTicks();
+    stopOpt.hidden = on;
+    prevBtn.disabled = on;
+    nextBtn.disabled = on;
+    renderSpeeds();
+    shown = '';
+    render();
+  });
   speeds.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]');
     if (b) {
@@ -156,10 +184,10 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
       }
     }
   });
-  reverse.addEventListener('click', () => store.setSpeed(store.speedIndex, !store.reverse));
+  reverse.addEventListener('click', () => store.setSpeed(store.modeSpeedIndex, !store.reverse));
   const syncSpeed = () => {
     for (const b of speeds.querySelectorAll<HTMLElement>('[data-s]')) {
-      const on = Number(b.dataset.s) === store.speedIndex;
+      const on = Number(b.dataset.s) === store.modeSpeedIndex;
       b.setAttribute('aria-pressed', String(on));
       // on phones the row scrolls; keep the chosen speed in sight
       if (on && speeds.scrollWidth > speeds.clientWidth) {
@@ -181,7 +209,7 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   store.on('play', syncPlay);
   syncPlay();
 
-  $('now').addEventListener('click', () => store.setDay(dayOf(new Date())));
+  $('now').addEventListener('click', () => (store.deep ? store.setMyr(0) : store.setDay(dayOf(new Date()))));
   $<HTMLInputElement>('opt-stop').addEventListener('change', (e) => {
     store.stopAtEvents = (e.target as HTMLInputElement).checked;
   });
@@ -200,15 +228,28 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   $('prev-ev').addEventListener('click', () => step(-1));
   $('next-ev').addEventListener('click', () => step(1));
 
-  let shownMinute = -1;
+  let shown = '';
   const render = () => {
-    const day = store.day;
-    const d = dateOf(day);
-    const minute = Math.floor(day * 1440);
-    if (minute === shownMinute) {
+    if (store.deep) {
+      const text = t.myr(store.myr);
+      if (text === shown) {
+        return;
+      }
+      shown = text;
+      dMain.textContent = text;
+      dAlt.textContent = t.deepNote;
+      if (document.activeElement !== slider) {
+        slider.value = String(Math.round(((store.myr / DEEP_RANGE + 1) / 2) * SLIDER_MAX));
+      }
       return;
     }
-    shownMinute = minute;
+    const day = store.day;
+    const d = dateOf(day);
+    const minute = `${Math.floor(day * 1440)}`;
+    if (minute === shown) {
+      return;
+    }
+    shown = minute;
     dMain.textContent = t.date(d);
     // the clock only means something when time moves slowly enough to read it
     const slow = !store.playing || SPEEDS[store.speedIndex] <= 1;
@@ -222,8 +263,9 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
     }
   };
   store.on('day', render);
+  store.on('myr', render);
   store.on('select', () => {
-    shownMinute = -1;
+    shown = '';
     render();
   });
   render();

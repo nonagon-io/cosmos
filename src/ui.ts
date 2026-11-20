@@ -3,6 +3,7 @@ import { periodDays, type Vec } from './astro/kepler';
 import type { Body, Region, SpaceEvent, View } from './data/schema';
 import { esc, fmtDistance, fmtLightTime, fmtMass, fmtPeriod } from './format';
 import { t } from './i18n';
+import { M31_SYSTEM } from './scene/localgroup';
 import { AU_PER_LY } from './scene/stars';
 import type { Layers, Store } from './store';
 
@@ -222,6 +223,7 @@ export function setupUI(store: Store, act: Actions) {
       ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
       ${at?.home ? `<p class="note">${esc(t.galaxyModel)}</p>` : ''}
       ${at?.type === 'blackhole' ? `<p class="note">${esc(t.blackholeModel)}</p>` : ''}
+      ${M31_SYSTEM.has(r.id) ? `<p class="note">${esc(t.spiralModel)}</p>` : ''}
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}

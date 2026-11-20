@@ -6,6 +6,7 @@ import {
   DoubleSide,
   Group,
   MathUtils,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   Points,
@@ -13,6 +14,7 @@ import {
   type Sprite,
   type SpriteMaterial,
   Vector2,
+  Vector3,
 } from 'three';
 import type { Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
@@ -25,12 +27,26 @@ const R0 = 8.178;
 const Z_SUN = 0.0208;
 const LY_PER_KPC = 3261.56;
 
+// How the Galaxy turns, in radians per million years (1 km/s is 1.0227 pc per million years). The Sun goes
+// round at the circular speed, about 233 km/s (Eilers 2019), so once in some 220 million years. The spiral
+// pattern is a wave the stars pass through and turns slower; its speed is still argued over, from about 17 to
+// 28 km/s/kpc, and 20 is taken here, which puts the Sun near corotation.
+const KMS = 1.0227;
+const SUN_OMEGA = (233 * KMS) / (R0 * 1000);
+const ARM_OMEGA = (20 * KMS) / 1000;
+// The Sun also bobs through the plane, now rising at 7.25 km/s (Schönrich 2010), about once every 70 million years
+const BOB = (2 * Math.PI) / 70;
+const W_SUN = 7.25 * KMS;
+
 // The NASA/JPL-Caltech/ESO/R. Hurt painting (eso1339g), seen from the north galactic pole with longitude 0
 // straight up. Measured on its annotated twin at 1024 px: the centre is at (512, 510) and the Sun 196 px
 // below it, so that gap is set to R0.
 const PAINT = { cx: 512, cy: 510, sunY: 706, size: 1024 };
-// on-screen width the satellite galaxies are held at, unless true size is on
-const DWARF_MIN_PX = 28;
+// on-screen width the satellite galaxies, and from far enough out the Galaxy itself, are held at, unless true
+// size is on
+const DWARF_MIN_PX = 12;
+const GALAXY_MIN_PX = 16;
+const GALAXY_RADIUS = 50000 * AU_PER_LY;
 
 interface Dwarf {
   pos: Vec;
@@ -140,16 +156,17 @@ void main() {
 }
 `;
 
-const COLORS = {
+export const COLORS = {
   bulge: new Color('#ffd7a3'),
   disk: new Color('#efe3cf'),
   arm: new Color('#c4d6ff'),
   hii: new Color('#ff8fb8'),
 };
 
-class Cloud {
+export class Cloud {
   readonly mat: ShaderMaterial;
   readonly points: Points;
+  private readonly count: number;
 
   constructor(
     parent: Group,
@@ -161,10 +178,27 @@ class Cloud {
     gain: number,
     shrink = new Vector2(1e6, 2e6),
   ) {
+    // shuffled, so any leading share of the points is a fair sample of the whole (see show)
+    const n = size.length;
+    const order = Array.from({ length: n }, (_, i) => i);
+    const rand = rng(n);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const p = new Float32Array(n * 3);
+    const c = new Float32Array(n * 3);
+    const s = new Float32Array(n);
+    for (const [k, i] of order.entries()) {
+      p.set(pos.slice(i * 3, i * 3 + 3), k * 3);
+      c.set(col.slice(i * 3, i * 3 + 3), k * 3);
+      s[k] = size[i];
+    }
+    this.count = n;
     const g = new BufferGeometry();
-    g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
-    g.setAttribute('aColor', new BufferAttribute(new Float32Array(col), 3));
-    g.setAttribute('aSize', new BufferAttribute(new Float32Array(size), 1));
+    g.setAttribute('position', new BufferAttribute(p, 3));
+    g.setAttribute('aColor', new BufferAttribute(c, 3));
+    g.setAttribute('aSize', new BufferAttribute(s, 1));
     this.mat = new ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
@@ -185,7 +219,27 @@ class Cloud {
     this.points.frustumCulled = false;
     parent.add(this.points);
   }
+
+  /**
+   * Sets the opacity for a galaxy `px` pixels across, drawing only as many points as that needs, each brighter so
+   * the total light holds. A few hundred thousand piled onto a few dozen pixels would stall the GPU on blending.
+   */
+  show(opacity: number, px = Number.POSITIVE_INFINITY) {
+    const k = Math.max(1, Math.min(this.count, Math.ceil(POINTS_PER_PX2 * px * px)));
+    this.points.geometry.setDrawRange(0, k);
+    this.mat.uniforms.opacity.value = (opacity * this.count) / k;
+    this.points.visible = opacity > 0.01;
+  }
 }
+
+// points drawn per square pixel of a galaxy's width, at most
+const POINTS_PER_PX2 = 20;
+
+/**
+ * Extra brightness for a spiral galaxy `px` pixels across. Shrunk to a few dozen pixels, the faint disk between
+ * the arms would leave only a dim smudge, so it is brightened as a long exposure would.
+ */
+export const exposureFor = (px: number) => MathUtils.clamp(250 / px, 1, 6);
 
 /**
  * The Milky Way as a model: a bar and bulge, an exponential disk, and the spiral arms above, built from
@@ -199,6 +253,12 @@ export class Galaxy {
   paintWeight = 0;
   private readonly normal: Vec;
   private readonly centre: Vec;
+  /** Holds the model and the painting, turned and shifted for the time on the Galaxy's timeline. */
+  private readonly frame = new Group();
+  private shift: Vec = [0, 0, 0];
+  private myr = 0;
+  /** How much the Galaxy is drawn bigger than it is, to stay visible from far off. */
+  grow = 1;
   private readonly dwarfs: (Dwarf & { group: Group; stars: Cloud; haze: Cloud; glowSize: number })[] = [];
 
   /** `dwarfs` are satellite galaxies, drawn as loose clouds of points around their real positions. */
@@ -319,14 +379,51 @@ export class Galaxy {
     });
     const mesh = new Mesh(pg, this.paint);
     mesh.frustumCulled = false;
-    parent.add(mesh);
+    this.frame.add(mesh);
+    this.frame.matrixAutoUpdate = false;
+    parent.add(this.frame);
     const n = toEcliptic(0, 0, 1);
     const nl = Math.hypot(...n);
     this.normal = [n[0] / nl, n[1] / nl, n[2] / nl];
     this.centre = galactic(0, 0, 0);
 
-    this.stars = new Cloud(parent, star.pos, star.col, star.size, 1.5, 4, 0.45);
-    this.haze = new Cloud(parent, haze.pos, haze.col, haze.size, 1.5, 120, 0.6, new Vector2(6, 24));
+    this.stars = new Cloud(this.frame, star.pos, star.col, star.size, 1.5, 4, 0.45);
+    this.haze = new Cloud(this.frame, haze.pos, haze.col, haze.size, 1.5, 120, 0.6, new Vector2(6, 24));
+  }
+
+  /**
+   * Where the Sun has moved to, `myr` million years from now, relative to where it is now, in ecliptic AU. The
+   * scene stays centred on the Sun, so everything fixed to the Galaxy moves the other way.
+   */
+  static sunShift(myr: number): Vec {
+    const th = SUN_OMEGA * myr;
+    const z = (Z_SUN * 1000 * Math.cos(BOB * myr) + (W_SUN / BOB) * Math.sin(BOB * myr)) / 1000;
+    return toEcliptic(R0 - R0 * Math.cos(th), R0 * Math.sin(th), z - Z_SUN);
+  }
+
+  /** Moves the Galaxy past the Sun to `myr` million years from now; `update` then turns its spiral pattern. */
+  setTime(myr: number) {
+    this.myr = myr;
+    this.shift = Galaxy.sunShift(myr);
+  }
+
+  private placeFrame() {
+    const s = this.shift;
+    const c = this.centre;
+    // seen from the north galactic pole the Galaxy turns clockwise
+    const m = new Matrix4()
+      .makeTranslation(c[0] - s[0], c[1] - s[1], c[2] - s[2])
+      .multiply(new Matrix4().makeRotationAxis(new Vector3(...this.normal), -ARM_OMEGA * this.myr))
+      .multiply(new Matrix4().makeScale(this.grow, this.grow, this.grow))
+      .multiply(new Matrix4().makeTranslation(-c[0], -c[1], -c[2]));
+    this.frame.matrix.copy(m);
+    this.frame.matrixWorldNeedsUpdate = true;
+  }
+
+  /** A point of the model, given as at the present, where it is now drawn. */
+  place(p: Vec): Vec {
+    const v = new Vector3(...p).applyMatrix4(this.frame.matrix);
+    return [v.x, v.y, v.z];
   }
 
   /** Shows the model once the camera is far enough out that the Galaxy, not the nearby stars, fills the view. */
@@ -338,7 +435,9 @@ export class Galaxy {
     // the glow only reads as a glow from well outside; from inside it breaks into blobs
     const h = k * MathUtils.smoothstep(lg, 3.9, 4.6);
     // the painting is flat: show it when looking down on the disk from well outside, the points edge on
-    const d = [cam[0] - this.centre[0], cam[1] - this.centre[1], cam[2] - this.centre[2]];
+    const c = this.centre;
+    const s = this.shift;
+    const d = [cam[0] - c[0] + s[0], cam[1] - c[1] + s[1], cam[2] - c[2] + s[2]];
     const tilt =
       Math.abs(d[0] * this.normal[0] + d[1] * this.normal[1] + d[2] * this.normal[2]) / Math.hypot(...d);
     // and fade it on the way in to the centre, where its painted bar would fill the screen
@@ -349,13 +448,16 @@ export class Galaxy {
       MathUtils.smoothstep(fromCentre, 4.6, 5.15);
     this.paint.opacity = w;
     this.paintWeight = w;
+    const px = (2 * GALAXY_RADIUS * scale) / Math.max(Math.hypot(...d), 1);
+    this.grow = trueSize ? 1 : Math.max(1, GALAXY_MIN_PX / px);
+    this.placeFrame();
     for (const [c, o] of [
       [this.stars, k * (1 - 0.75 * w)],
       [this.haze, h * (1 - w)],
     ] as const) {
       c.mat.uniforms.scale.value = scale;
-      c.mat.uniforms.opacity.value = o;
-      c.points.visible = o > 0.01;
+      c.mat.uniforms.grow.value = this.grow;
+      c.show(o * exposureFor(px * this.grow), px * this.grow);
     }
 
     for (const d of this.dwarfs) {
@@ -372,8 +474,7 @@ export class Galaxy {
       ] as const) {
         c.mat.uniforms.scale.value = scale;
         c.mat.uniforms.grow.value = grow;
-        c.mat.uniforms.opacity.value = o;
-        c.points.visible = o > 0.01;
+        c.show(o, px * grow);
       }
       if (d.glow) {
         d.glow.scale.setScalar(d.glowSize * grow);
