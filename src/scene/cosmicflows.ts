@@ -65,6 +65,8 @@ void main() {
 export class Cosmicflows {
   private readonly group = new Group();
   private readonly mat: ShaderMaterial;
+  private expansion = 1;
+  private fade = 1;
   readonly clusters = CLUSTERS.map((c) => {
     const d = eclipticDir(c.ra, c.dec);
     return { id: c.id, at: d.map((x) => x * c.mpc * AU_PER_MPC) as Vec };
@@ -97,13 +99,24 @@ export class Cosmicflows {
     parent.add(this.group);
   }
 
+  /**
+   * Back on the universe's timeline: `a` is its size then against now, which every distance out here scales
+   * with, and `fade` how much of today's galaxies to show, fewer when it was young.
+   */
+  setExpansion(a: number, fade: number) {
+    this.group.scale.setScalar(a);
+    this.expansion = a;
+    this.fade = fade;
+  }
+
   setTime(shift: Vec) {
     this.group.position.set(-shift[0], -shift[1], -shift[2]);
   }
 
   placeOf(at: Vec): Vec {
     const g = this.group.position;
-    return [g.x + at[0], g.y + at[1], g.z + at[2]];
+    const a = this.expansion;
+    return [g.x + at[0] * a, g.y + at[1] * a, g.z + at[2] * a];
   }
 
   /** How much these show, with the camera `sunDist` AU from the Sun. */
@@ -124,7 +137,7 @@ export class Cosmicflows {
 
   update(sunDist: number, pixelRatio: number) {
     const k = Cosmicflows.presence(sunDist);
-    this.mat.uniforms.opacity.value = 0.6 * k;
+    this.mat.uniforms.opacity.value = 0.6 * k * this.fade;
     this.mat.uniforms.size.value = 2.2 * pixelRatio;
     this.group.visible = k > 0.01;
   }

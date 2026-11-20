@@ -60,6 +60,8 @@ Past SDSS are DESI DR1's luminous red galaxies, star-forming galaxies and quasar
 
 Quaia (Storey-Fisher et al. 2024) adds about 1.2 million quasars from Gaia and unWISE over the whole sky, so the deep map isn't only two fans (`npm run fetch-data quaia`). Its redshifts come from Gaia's low-resolution spectra and are rough; quasars DESI has are left out in favour of DESI's. Loaded the same way, from a billion light years out. SDSS, DESI and Quaia each have a toggle.
 
+Out past 1.5 billion light years the timeline switches to billions of years and runs the expansion back to when the universe was about 400 million years old. The scale factor comes from flat ΛCDM with Planck's H0 = 67.7 and Ωm = 0.31; everything beyond the Local Group (the survey galaxies, the Boötes Void and the CMB sphere) is scaled by it about the Sun, and the galaxies fade below an age of about 3 billion years. Nothing is evolved: it is today's galaxies at earlier sizes.
+
 Around everything is the cosmic microwave background from Planck's 2018 SMICA map, on a sphere at the comoving distance of last scattering for the same cosmology, about 41 billion light years (`npm run fetch-data cmb`, which streams the 2 GB HEALPix map, averages it down to Nside 256 and resamples it to an ecliptic PNG). The texture loads only once the camera is out past 12 billion light years.
 
 The Boötes Void is a region (`void` type) at its published place and size (Kirshner et al. 1981). It does show in this data: a sphere about 100 million light years in radius at its centre holds about a fifth of the galaxies the same sphere does elsewhere at that distance. From far out the galaxies in front of and behind it fill it in, so it reads best from close.

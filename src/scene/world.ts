@@ -15,7 +15,7 @@ import { type Ephemeris, J2000, type OrbitData } from '../astro/ephemeris';
 import { type PeriElements, periodDays, type Vec } from '../astro/kepler';
 import type { Body, Kind } from '../data/schema';
 import { t } from '../i18n';
-import type { Store } from '../store';
+import { COSMIC_AGE, type Store, scaleFactor } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
 import { Cmb } from './cmb';
@@ -42,6 +42,9 @@ const STAR_LABELS = 24;
 // doesn't flicker between the two
 const DEEP_IN = 6000;
 const DEEP_OUT = 4500;
+// and out at billions of light years from the Sun it counts billions of years of the universe's expansion
+const COSMIC_IN = 1.5e9;
+const COSMIC_OUT = 1e9;
 // light years from the Sun beyond which the dwarf galaxies get names
 const LOCAL_GROUP_LABELS = 500000;
 // zoom, in light years, out to which the galaxy points need no extra exposure
@@ -108,6 +111,8 @@ export class World {
     pos: Vec;
     base: Vec;
     galactic: boolean;
+    // a void out in the Hubble flow, which moves with the expansion
+    expands: boolean;
     radius: number;
     glow: Sprite | null;
   }[] = [];
@@ -225,6 +230,7 @@ export class World {
         pos,
         base: [...pos],
         galactic: r.at.type === 'galaxy' || r.at.type === 'blackhole',
+        expands: r.at.type === 'void',
         radius: r.at.radius * AU_PER_LY,
         glow,
       });
@@ -358,7 +364,20 @@ export class World {
     for (const s of this.surveys) {
       s.setTime(shift);
     }
+    // what is bound together, the Galaxy and its neighbours, keeps its size; everything further moves apart
+    const a = scaleFactor(this.store.gyr);
+    const fade = MathUtils.lerp(0.06, 1, MathUtils.smoothstep(COSMIC_AGE + this.store.gyr, 0.4, 3));
+    this.cosmicflows.setExpansion(a, fade);
+    this.cmb.setExpansion(a);
+    for (const s of this.surveys) {
+      s.setExpansion(a, fade);
+    }
     for (const o of this.deepSky) {
+      if (o.expands) {
+        for (let i = 0; i < 3; i++) {
+          o.pos[i] = o.base[i] * a;
+        }
+      }
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));
         for (let i = 0; i < 3; i++) {
@@ -403,6 +422,10 @@ export class World {
     const out = this.otherGalaxies.has(this.rig.focusId) ? Infinity : this.rig.distance / AU_PER_LY;
     if (store.deep ? out < DEEP_OUT : out > DEEP_IN) {
       store.setDeep(!store.deep);
+    }
+    const sunLy = Math.hypot(...this.camPos) / AU_PER_LY;
+    if (store.deep ? (store.cosmic ? sunLy < COSMIC_OUT : sunLy > COSMIC_IN) : store.cosmic) {
+      store.setCosmic(!store.cosmic);
     }
     const day = store.day;
     const time = MakeTime(day);

@@ -64,6 +64,7 @@ export class Cmb {
   // the outside, the near side once the camera has left: it fades in only well clear of the shell
   private readonly front: ShaderMaterial;
   private tex: Texture | null = null;
+  private expansion = 1;
 
   constructor(
     parent: Group,
@@ -91,6 +92,12 @@ export class Cmb {
     parent.add(this.group);
   }
 
+  /** Where the matter that gave off this light was, `a` times as far as now, on the universe's timeline. */
+  setExpansion(a: number) {
+    this.group.scale.setScalar(a);
+    this.expansion = a;
+  }
+
   setTime(shift: Vec) {
     this.group.position.set(-shift[0], -shift[1], -shift[2]);
   }
@@ -102,7 +109,7 @@ export class Cmb {
       Math.log10(FADE_FROM),
       Math.log10(FADE_TO),
     );
-    const r = sunDist / CMB_AU;
+    const r = sunDist / (CMB_AU * this.expansion);
     // from within it is a map laid over a sky the eye would see dark: barely there among the galaxies, and
     // brought up only over the last stretch to the shell
     this.back.uniforms.opacity.value = k * MathUtils.lerp(0.04, 0.35, MathUtils.smoothstep(r, 0.8, 1));

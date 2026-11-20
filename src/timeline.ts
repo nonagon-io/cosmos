@@ -2,7 +2,7 @@ import { dateOf, dayOf } from './astro/ephemeris';
 import type { SpaceEvent } from './data/schema';
 import { esc } from './format';
 import { t } from './i18n';
-import { DEEP_RANGE, SPEEDS, type Store } from './store';
+import { COSMIC_AGE, COSMIC_RANGE, DEEP_RANGE, SPEEDS, type Store, scaleFactor } from './store';
 
 const SLIDER_MAX = 10000;
 const IMPORTANCE_COLOR = { 1: 'var(--event-1)', 2: 'var(--nebula)', 3: 'var(--accent)' } as const;
@@ -81,6 +81,15 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
     const m = -DEEP_RANGE + i * 50;
     return `<span style="left:${i * 10}%"${m === 0 ? ' class="now"' : ''}>${t.myrTick(m)}</span>`;
   }).join('');
+  // billions of years back to the young universe, every two
+  const cosmicTicks = [-12, -10, -8, -6, -4, -2, 0]
+    .map((g) => {
+      const at = (1 + g / COSMIC_RANGE) * 100;
+      // the last tick sits at the very end, so it hangs left of its mark rather than over the edge
+      const pin = g === 0 ? ';transform:translateX(-100%);white-space:nowrap' : '';
+      return `<span style="left:${at.toFixed(2)}%${pin}"${g === 0 ? ' class="now"' : ''}>${t.gyrTick(g)}</span>`;
+    })
+    .join('');
   ticks.innerHTML = yearTicks;
 
   // events: the more important, the taller. Marks closer than MARK_GAP px step up into another lane, the more
@@ -151,7 +160,9 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
 
   slider.addEventListener('input', () => {
     const v = Number(slider.value) / SLIDER_MAX;
-    if (store.deep) {
+    if (store.cosmic) {
+      store.setGyr((v - 1) * COSMIC_RANGE);
+    } else if (store.deep) {
       store.setMyr((v * 2 - 1) * DEEP_RANGE);
     } else {
       store.setDay(scale.toDay(v));
@@ -159,22 +170,26 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   });
 
   const renderSpeeds = () => {
-    const labels = store.deep ? t.deepSpeeds : t.speeds;
+    const labels = store.cosmic ? t.cosmicSpeeds : store.deep ? t.deepSpeeds : t.speeds;
     speeds.innerHTML = labels.map((l, i) => `<button type="button" data-s="${i}">${l}</button>`).join('');
   };
   renderSpeeds();
   // zoomed out to the Galaxy, days stand still: the timeline counts millions of years and the events go
-  store.on('deep', (on) => {
+  const modeChanged = () => {
+    const on = store.deep;
     panel.classList.toggle('deep', on);
-    ticks.innerHTML = on ? deepTicks : yearTicks;
+    ticks.innerHTML = store.cosmic ? cosmicTicks : on ? deepTicks : yearTicks;
     layoutTicks();
     stopOpt.hidden = on;
     prevBtn.disabled = on;
     nextBtn.disabled = on;
     renderSpeeds();
+    syncSpeed();
     shown = '';
     render();
-  });
+  };
+  store.on('deep', modeChanged);
+  store.on('cosmic', modeChanged);
   speeds.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]');
     if (b) {
@@ -209,7 +224,9 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   store.on('play', syncPlay);
   syncPlay();
 
-  $('now').addEventListener('click', () => (store.deep ? store.setMyr(0) : store.setDay(dayOf(new Date()))));
+  $('now').addEventListener('click', () =>
+    store.cosmic ? store.setGyr(0) : store.deep ? store.setMyr(0) : store.setDay(dayOf(new Date())),
+  );
   $<HTMLInputElement>('opt-stop').addEventListener('change', (e) => {
     store.stopAtEvents = (e.target as HTMLInputElement).checked;
   });
@@ -230,6 +247,20 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
 
   let shown = '';
   const render = () => {
+    if (store.cosmic) {
+      const text = t.gyr(store.gyr);
+      const note = t.cosmicNote(COSMIC_AGE + store.gyr, scaleFactor(store.gyr));
+      if (text + note === shown) {
+        return;
+      }
+      shown = text + note;
+      dMain.textContent = text;
+      dAlt.textContent = note;
+      if (document.activeElement !== slider) {
+        slider.value = String(Math.round((1 + store.gyr / COSMIC_RANGE) * SLIDER_MAX));
+      }
+      return;
+    }
     if (store.deep) {
       const text = t.myr(store.myr);
       if (text === shown) {
@@ -264,6 +295,7 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
   };
   store.on('day', render);
   store.on('myr', render);
+  store.on('gyr', render);
   store.on('select', () => {
     shown = '';
     render();

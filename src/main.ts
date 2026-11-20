@@ -11,7 +11,7 @@ import { eclipticDir, type StarData, type StarField } from './scene/stars';
 import type { SurveyManifest, SurveyName } from './scene/survey';
 import { World } from './scene/world';
 import { setupSearch } from './search';
-import { DEEP_RANGE, Store } from './store';
+import { COSMIC_RANGE, DEEP_RANGE, Store } from './store';
 import { setupTimeline } from './timeline';
 import { setupUI } from './ui';
 
@@ -405,14 +405,33 @@ async function start() {
   const loop = (now: number) => {
     const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
     last = now;
-    if (store.deep) {
+    if (store.cosmic) {
+      if (store.playing) {
+        // play from an end runs the whole history from the other end
+        const v = store.cosmicSpeed;
+        if (store.gyr === 0 && v > 0) {
+          store.setGyr(-COSMIC_RANGE);
+        } else if (store.gyr === -COSMIC_RANGE && v < 0) {
+          store.setGyr(0);
+        }
+        store.setGyr(store.gyr + v * dt);
+        if (store.gyr === 0 || store.gyr === -COSMIC_RANGE) {
+          store.setPlaying(false);
+        }
+      }
+    } else if (store.gyr !== 0) {
+      // back in from the far universe: let it grow back to today's size
+      const g = store.gyr * Math.exp(-dt * 2.5);
+      store.setGyr(Math.abs(g) < 0.005 ? 0 : g);
+    }
+    if (store.deep && !store.cosmic) {
       if (store.playing) {
         store.setMyr(store.myr + store.deepSpeed * dt);
         if (Math.abs(store.myr) === DEEP_RANGE) {
           store.setPlaying(false);
         }
       }
-    } else if (store.myr !== 0) {
+    } else if (store.myr !== 0 && !store.deep) {
       // back in from the Galaxy: turn it back to the present, where the Solar System's date belongs
       const m = store.myr * Math.exp(-dt * 2.5);
       store.setMyr(Math.abs(m) < 0.05 ? 0 : m);

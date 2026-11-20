@@ -24,6 +24,7 @@ export interface SurveyManifest {
  * machine draws fewer.
  */
 export class Survey {
+  private fade = 1;
   private readonly group = new Group();
   private readonly mat: ShaderMaterial;
   private readonly geo = new BufferGeometry();
@@ -84,6 +85,15 @@ export class Survey {
     return this.group.visible;
   }
 
+  /**
+   * Back on the universe's timeline: `a` is its size then against now, which every distance out here scales
+   * with, and `fade` how much of today's galaxies to show, fewer when it was young.
+   */
+  setExpansion(a: number, fade: number) {
+    this.group.scale.setScalar(a);
+    this.fade = fade;
+  }
+
   setTime(shift: Vec) {
     this.group.position.set(-shift[0], -shift[1], -shift[2]);
   }
@@ -111,7 +121,7 @@ export class Survey {
     this.geo.setDrawRange(0, Math.round(this.shown));
     // spread the light over however many are drawn, a little less than evenly so more reads as more detail
     const share = (REF_COUNT / Math.max(this.shown, REF_COUNT)) ** 0.4;
-    this.mat.uniforms.opacity.value = 0.6 * k * share;
+    this.mat.uniforms.opacity.value = 0.6 * k * share * this.fade;
     this.mat.uniforms.size.value = 2 * pixelRatio;
   }
 }
