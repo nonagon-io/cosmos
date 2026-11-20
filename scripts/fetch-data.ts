@@ -1080,6 +1080,130 @@ async function sdss() {
   console.log(`  ${rows.length} galaxies in ${bounds.length - 1} files`);
 }
 
+// ---- DESI ----
+
+// DESI DR1's large-scale structure catalogues (DESI Collaboration 2025): luminous red galaxies, star-forming
+// galaxies and quasars. Only those past z = 0.6 are taken, where SDSS thins out or ends, and of those a random
+// DESI_KEEP, out to the quasars at z of 3 and more. Placed like the SDSS ones, at their comoving distance, in
+// files cut the same way. The catalogues are FITS tables of a few hundred MB, read here as they download.
+const DESI_LSS = 'https://data.desi.lbl.gov/public/dr1/survey/catalogs/dr1/LSS/iron/LSScats/v1.5';
+const DESI_FILES = ['LRG', 'ELG_LOPnotqso', 'QSO'].flatMap((t) => [`${t}_NGC`, `${t}_SGC`]);
+const DESI_KEEP = 2400000;
+const DESI_MPC = 1 / 8;
+
+/** Streams a FITS binary table, calling `row` with the named double columns of each row. */
+async function readFits(url: string, names: string[], row: (v: number[]) => void) {
+  const res = await fetch(url);
+  if (!res.ok || !res.body) {
+    throw new Error(`${url}: ${res.status}`);
+  }
+  const reader = res.body.getReader();
+  let buf = Buffer.alloc(0);
+  const more = async () => {
+    const { value, done } = await reader.read();
+    if (done) {
+      return false;
+    }
+    buf = Buffer.concat([buf, value]);
+    return true;
+  };
+  // headers come in 2880-byte blocks of 80-byte cards; the table is in the first extension
+  const header = async () => {
+    const cards = new Map<string, string>();
+    for (;;) {
+      while (buf.length < 2880) {
+        if (!(await more())) {
+          throw new Error(`${url}: header cut short`);
+        }
+      }
+      const block = buf.subarray(0, 2880).toString('latin1');
+      buf = buf.subarray(2880);
+      for (let i = 0; i < 2880; i += 80) {
+        const card = block.slice(i, i + 80);
+        const key = card.slice(0, 8).trim();
+        if (key === 'END') {
+          return cards;
+        }
+        cards.set(key, card.slice(10).split('/')[0].trim().replace(/^'|'$/g, '').trim());
+      }
+    }
+  };
+  await header();
+  const h = await header();
+  const width = Number(h.get('NAXIS1'));
+  const rows = Number(h.get('NAXIS2'));
+  const size: Record<string, number> = { L: 1, B: 1, I: 2, J: 4, K: 8, E: 4, D: 8, A: 1 };
+  const offset = new Map<string, number>();
+  let at = 0;
+  for (let i = 1; i <= Number(h.get('TFIELDS')); i++) {
+    const [, n, t] = (h.get(`TFORM${i}`) ?? '').match(/^(\d*)(\w)/) ?? [];
+    offset.set(h.get(`TTYPE${i}`) ?? '', at);
+    at += (n ? Number(n) : 1) * size[t];
+  }
+  const want = names.map((n) => offset.get(n) ?? -1);
+  if (want.includes(-1)) {
+    throw new Error(`${url}: missing one of ${names}`);
+  }
+  let done = 0;
+  while (done < rows) {
+    const n = Math.min(rows - done, Math.floor(buf.length / width));
+    for (let r = 0; r < n; r++) {
+      row(want.map((o) => buf.readDoubleBE(r * width + o)));
+    }
+    buf = buf.subarray(n * width);
+    done += n;
+    if (done < rows && !(await more())) {
+      throw new Error(`${url}: table cut short`);
+    }
+  }
+  await reader.cancel();
+}
+
+async function desi() {
+  console.log('desi');
+  const kept: number[] = [];
+  for (const f of DESI_FILES) {
+    let n = 0;
+    await readFits(`${DESI_LSS}/${f}_clustering.dat.fits`, ['RA', 'DEC', 'Z'], ([ra, dec, z]) => {
+      if (z >= 0.6) {
+        kept.push(ra, dec, z);
+        n++;
+      }
+    });
+    console.log(`  ${f}: ${n}`);
+  }
+  const total = kept.length / 3;
+  // a fixed shuffle of the indices, then the first DESI_KEEP
+  let seed = 2;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const order = Array.from({ length: total }, (_, i) => i);
+  for (let i = total - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const count = Math.min(DESI_KEEP, total);
+  const bounds = [0, SDSS_FIRST];
+  while (bounds[bounds.length - 1] < count) {
+    bounds.push(Math.min(count, bounds[bounds.length - 1] + SDSS_CHUNK));
+  }
+  for (let k = 0; k < bounds.length - 1; k++) {
+    const out = new Uint16Array((bounds[k + 1] - bounds[k]) * 3);
+    for (let i = bounds[k]; i < bounds[k + 1]; i++) {
+      const j = order[i] * 3;
+      const o = (i - bounds[k]) * 3;
+      out[o] = Math.round((kept[j] / 360) * 65535);
+      out[o + 1] = Math.round(((kept[j + 1] + 90) / 180) * 65535);
+      out[o + 2] = Math.min(65535, Math.round(comoving(kept[j + 2]) / DESI_MPC));
+    }
+    writeFileSync(join(DATA, `desi-${k}.bin`), Buffer.from(out.buffer));
+  }
+  save('desi.json', { files: bounds.length - 1, count, unit: DESI_MPC });
+  console.log(`  ${count} of ${total} in ${bounds.length - 1} files`);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -1092,6 +1216,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   cosmicflows,
   redshifts,
   sdss,
+  desi,
   textures,
 };
 const pick = process.argv.slice(2);

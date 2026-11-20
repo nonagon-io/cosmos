@@ -2,7 +2,7 @@ import { MathUtils, PerspectiveCamera } from 'three';
 import type { Vec } from '../astro/kepler';
 
 // about 600,000 light years: the whole Milky Way and the Magellanic Clouds
-export const MAX_DISTANCE = 1.5e15;
+export const MAX_DISTANCE = 4e15;
 const ROTATE_PER_PX = 0.0055;
 const ZOOM_PER_WHEEL = 0.0016;
 
@@ -255,7 +255,7 @@ export class CameraRig {
     // close to a surface the near plane has to come in with the camera
     const min = this.minDistanceOf(this.focusId);
     cam.near = Math.max(1e-12, Math.min(this.distance * 1e-3, (this.distance - min / 1.05) * 0.2));
-    cam.far = 6e15;
+    cam.far = 2e16;
     cam.updateProjectionMatrix();
 
     // scene axes are ecliptic x, z, -y (y up = ecliptic north)

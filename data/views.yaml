@@ -89,3 +89,8 @@
   focus: milky-way
   distance: 700000000000000
   tilt: 35
+- id: deep-map
+  name: ไกลสุดที่ทำแผนที่ได้
+  focus: milky-way
+  distance: 2200000000000000
+  tilt: 35

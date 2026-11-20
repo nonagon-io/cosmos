@@ -10,18 +10,18 @@ const REF_COUNT = 100000;
 const BUDGET = 3e6;
 const MIN_BUDGET = 150000;
 
-export interface SdssManifest {
+export interface SurveyManifest {
   files: number;
   count: number;
   unit: number;
 }
 
 /**
- * The SDSS galaxies, loaded a file at a time into one buffer sized for all of them. The files are slices of
+ * The galaxies of a big redshift survey (SDSS, DESI), loaded a file at a time into one buffer sized for all of them. The files are slices of
  * one random order, so whatever has arrived is an even sample of the whole, and so is any prefix of it: a slow
  * machine draws fewer.
  */
-export class Sdss {
+export class Survey {
   private readonly group = new Group();
   private readonly mat: ShaderMaterial;
   private readonly geo = new BufferGeometry();
@@ -33,7 +33,7 @@ export class Sdss {
 
   constructor(
     parent: Group,
-    private readonly manifest: SdssManifest,
+    private readonly manifest: SurveyManifest,
   ) {
     this.pos = new BufferAttribute(new Float32Array(manifest.count * 3), 3);
     this.geo.setAttribute('position', this.pos);

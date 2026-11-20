@@ -27,9 +27,9 @@ import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
-import { Sdss, type SdssManifest } from './sdss';
 import { SgrA } from './sgra';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
+import { Survey, type SurveyManifest } from './survey';
 import { CometTails } from './tails';
 import { haze } from './textures';
 
@@ -43,8 +43,6 @@ const DEEP_IN = 6000;
 const DEEP_OUT = 4500;
 // light years from the Sun beyond which the dwarf galaxies get names
 const LOCAL_GROUP_LABELS = 500000;
-// light years from the Sun past which the rest of the SDSS galaxies start to download
-const SDSS_FETCH_LY = 1e8;
 // zoom, in light years, out to which the galaxy points need no extra exposure
 const WEB_EXPOSE_LY = 2e9;
 // device pixels the black hole's disk starts out allowed to trace, and the size past which frame times adjust
@@ -129,7 +127,7 @@ export class World {
   private readonly localGroup: LocalGroup;
   private readonly localVolume: LocalVolume;
   private readonly cosmicflows: Cosmicflows;
-  private sdss: Sdss | null = null;
+  private readonly surveys: Survey[] = [];
   /** Galaxies other than ours, where the Solar System's dates mean nothing however close the camera is. */
   private readonly otherGalaxies: Set<string>;
   // Sgr A*'s disk is ray traced per pixel, which filling the screen can cost more than a slow GPU has. It gets a
@@ -333,15 +331,16 @@ export class World {
   }
 
   /** Positions of every body at `day`, parents first. */
-  /** The SDSS galaxies, which arrive after the rest. */
-  addSdss(manifest: SdssManifest) {
-    this.sdss = new Sdss(this.world, manifest);
-    return this.sdss;
+  /** A survey's galaxies, which arrive after the rest. */
+  addSurvey(manifest: SurveyManifest) {
+    const s = new Survey(this.world, manifest);
+    this.surveys.push(s);
+    return s;
   }
 
-  /** Whether the camera is out far enough that the rest of the SDSS galaxies are worth fetching. */
-  get farOut() {
-    return Math.hypot(...this.camPos) > SDSS_FETCH_LY * AU_PER_LY;
+  /** Whether the camera is more than `ly` light years from the Sun. */
+  outPast(ly: number) {
+    return Math.hypot(...this.camPos) > ly * AU_PER_LY;
   }
 
   private computePositions(day: number, time: AstroTime) {
@@ -352,7 +351,9 @@ export class World {
     this.localGroup.setTime(shift, drift, this.store.myr);
     this.localVolume.setTime(shift);
     this.cosmicflows.setTime(shift);
-    this.sdss?.setTime(shift);
+    for (const s of this.surveys) {
+      s.setTime(shift);
+    }
     for (const o of this.deepSky) {
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));
@@ -505,7 +506,9 @@ export class World {
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
-    this.sdss?.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs);
+    for (const s of this.surveys) {
+      s.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs);
+    }
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
@@ -545,7 +548,7 @@ export class World {
     if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
       this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
     }
-    if (this.cosmicflows.visible || this.sdss?.visible) {
+    if (this.cosmicflows.visible || this.surveys.some((s) => s.visible)) {
       // zoomed in among the galaxies they spread out over the screen, few to a pixel: expose for longer
       const zoomLy = this.rig.distance / AU_PER_LY;
       this.webPass.gain.value = 4 * MathUtils.clamp((WEB_EXPOSE_LY / zoomLy) ** 0.7, 1, 30);

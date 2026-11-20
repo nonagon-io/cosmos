@@ -7,8 +7,8 @@ import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume 
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
-import type { SdssManifest } from './scene/sdss';
 import { eclipticDir, type StarData, type StarField } from './scene/stars';
+import type { SurveyManifest } from './scene/survey';
 import { World } from './scene/world';
 import { setupSearch } from './search';
 import { DEEP_RANGE, Store } from './store';
@@ -42,29 +42,28 @@ function showError(title: string, problems: string[], hint = '') {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * The SDSS galaxies come last and in pieces: the first file once the page is up, the rest only when the camera
- * heads out toward them, and not at all when the browser asks to save data.
+ * The survey galaxies come last and in pieces: a survey's first file once the page is up, the rest only when
+ * the camera heads out past `restFrom` light years, and not at all when the browser asks to save data.
  */
-async function streamSdss(world: World) {
-  await sleep(1500);
-  let manifest: SdssManifest;
+async function streamSurvey(world: World, name: string, restFrom: number) {
+  let manifest: SurveyManifest;
   try {
-    manifest = await json<SdssManifest>('sdss.json');
+    manifest = await json<SurveyManifest>(`${name}.json`);
   } catch {
     return;
   }
-  const layer = world.addSdss(manifest);
+  const layer = world.addSurvey(manifest);
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
   for (let k = 0; k < manifest.files; k++) {
     if (k === 1) {
       if (saveData) {
         return;
       }
-      while (!world.farOut) {
+      while (!world.outPast(restFrom)) {
         await sleep(500);
       }
     }
-    const res = await fetch(`${BASE}data/sdss-${k}.bin`);
+    const res = await fetch(`${BASE}data/${name}-${k}.bin`);
     if (!res.ok) {
       return;
     }
@@ -164,7 +163,10 @@ async function start() {
     (id) => pickLabel(id),
   );
   const rig = world.rig;
-  void streamSdss(world);
+  void sleep(1500).then(() => {
+    void streamSurvey(world, 'sdss', 1e8);
+    void streamSurvey(world, 'desi', 1e9);
+  });
   // a moon's heading is the one around its planet, not the planet's own around the Sun
   rig.velocityOf = (id) => {
     const v = eph.velocity(id, store.day);
