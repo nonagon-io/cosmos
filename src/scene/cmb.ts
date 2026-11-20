@@ -59,24 +59,34 @@ void main() {
  */
 export class Cmb {
   private readonly group = new Group();
-  private readonly mat: ShaderMaterial;
+  // the inside of the shell, which is the sky from within and the far side from without
+  private readonly back: ShaderMaterial;
+  // the outside, the near side once the camera has left: it fades in only well clear of the shell
+  private readonly front: ShaderMaterial;
   private tex: Texture | null = null;
 
   constructor(
     parent: Group,
     private readonly url: string,
   ) {
-    this.mat = new ShaderMaterial({
-      vertexShader: vert,
-      fragmentShader: frag,
-      uniforms: { map: { value: null }, opacity: { value: 0 } },
-      transparent: true,
-      depthWrite: false,
-    });
-    const mesh = new Mesh(new SphereGeometry(CMB_AU, 128, 64), this.mat);
-    mesh.frustumCulled = false;
-    mesh.renderOrder = -10;
-    this.group.add(mesh);
+    const geo = new SphereGeometry(CMB_AU, 128, 64);
+    const make = (side: typeof BackSide | typeof FrontSide, order: number) => {
+      const mat = new ShaderMaterial({
+        vertexShader: vert,
+        fragmentShader: frag,
+        uniforms: { map: { value: null }, opacity: { value: 0 } },
+        transparent: true,
+        depthWrite: false,
+        side,
+      });
+      const mesh = new Mesh(geo, mat);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = order;
+      this.group.add(mesh);
+      return mat;
+    };
+    this.back = make(BackSide, -11);
+    this.front = make(FrontSide, -10);
     this.group.visible = false;
     parent.add(this.group);
   }
@@ -92,19 +102,21 @@ export class Cmb {
       Math.log10(FADE_FROM),
       Math.log10(FADE_TO),
     );
-    const outside = sunDist > CMB_AU;
-    this.mat.side = outside ? FrontSide : BackSide;
-    // kept dim so the galaxies still stand out against it, more so from outside where it lies over them
-    this.mat.uniforms.opacity.value = k * (outside ? 0.28 : 0.4);
+    const r = sunDist / CMB_AU;
+    // from within it is a map laid over a sky the eye would see dark: barely there among the galaxies, and
+    // brought up only over the last stretch to the shell
+    this.back.uniforms.opacity.value = k * MathUtils.lerp(0.04, 0.35, MathUtils.smoothstep(r, 0.8, 1));
+    this.front.uniforms.opacity.value = k * 0.28 * MathUtils.smoothstep(r, 1.15, 2);
     // fetched only once someone comes out this far, and shown once it is in
     if (k > 0.01 && !this.tex) {
       this.tex = new TextureLoader().load(this.url, () => {
-        this.mat.uniforms.map.value = this.tex;
+        this.back.uniforms.map.value = this.tex;
+        this.front.uniforms.map.value = this.tex;
       });
       // the longitude wraps at the seam, where mipmaps would draw a line
       this.tex.generateMipmaps = false;
       this.tex.minFilter = LinearFilter;
     }
-    this.group.visible = k > 0.01 && this.mat.uniforms.map.value !== null;
+    this.group.visible = k > 0.01 && this.back.uniforms.map.value !== null;
   }
 }
