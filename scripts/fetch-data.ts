@@ -2,6 +2,7 @@
 // Pass the names of steps to run only those: `npm run fetch-data -- moons stars`.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { crc32, deflateSync } from 'node:zlib';
 
 const ROOT = join(import.meta.dirname, '..', 'public');
 const DATA = join(ROOT, 'data');
@@ -1091,7 +1092,7 @@ const DESI_FILES = ['LRG', 'ELG_LOPnotqso', 'QSO'].flatMap((t) => [`${t}_NGC`, `
 const DESI_KEEP = 2400000;
 const DESI_MPC = 1 / 8;
 
-/** Streams a FITS binary table, calling `row` with the named double columns of each row. */
+/** Streams a FITS binary table, calling `row` with the named float or double columns of each row. */
 async function readFits(url: string, names: string[], row: (v: number[]) => void) {
   const res = await fetch(url);
   if (!res.ok || !res.body) {
@@ -1133,22 +1134,28 @@ async function readFits(url: string, names: string[], row: (v: number[]) => void
   const width = Number(h.get('NAXIS1'));
   const rows = Number(h.get('NAXIS2'));
   const size: Record<string, number> = { L: 1, B: 1, I: 2, J: 4, K: 8, E: 4, D: 8, A: 1 };
-  const offset = new Map<string, number>();
+  const offset = new Map<string, [number, string]>();
   let at = 0;
   for (let i = 1; i <= Number(h.get('TFIELDS')); i++) {
     const [, n, t] = (h.get(`TFORM${i}`) ?? '').match(/^(\d*)(\w)/) ?? [];
-    offset.set(h.get(`TTYPE${i}`) ?? '', at);
+    offset.set(h.get(`TTYPE${i}`) ?? '', [at, t]);
     at += (n ? Number(n) : 1) * size[t];
   }
-  const want = names.map((n) => offset.get(n) ?? -1);
-  if (want.includes(-1)) {
+  const want = names.map((n) => offset.get(n));
+  if (want.some((w) => !w)) {
     throw new Error(`${url}: missing one of ${names}`);
   }
+  const read = want.map((w) => {
+    const [o, t] = w as [number, string];
+    return t === 'E'
+      ? (b: Buffer, r: number) => b.readFloatBE(r + o)
+      : (b: Buffer, r: number) => b.readDoubleBE(r + o);
+  });
   let done = 0;
   while (done < rows) {
     const n = Math.min(rows - done, Math.floor(buf.length / width));
     for (let r = 0; r < n; r++) {
-      row(want.map((o) => buf.readDoubleBE(r * width + o)));
+      row(read.map((f) => f(buf, r * width)));
     }
     buf = buf.subarray(n * width);
     done += n;
@@ -1204,6 +1211,136 @@ async function desi() {
   console.log(`  ${count} of ${total} in ${bounds.length - 1} files`);
 }
 
+// ---- Planck ----
+
+// The cosmic microwave background from Planck's 2018 SMICA map, the version with the Galaxy's plane filled in
+// (Planck Collaboration 2020). It is a 2 GB HEALPix table at Nside 2048 in galactic coordinates; in its nested
+// order each run of 64 pixels makes up one pixel at Nside 256, so it is averaged down that far as it streams in.
+// Then it is resampled onto ecliptic longitude and latitude, the scene's own frame, as an 8-bit grey PNG of
+// temperature from -CMB_RANGE to +CMB_RANGE K; the app colours it.
+// ESA's archive; the copy at IRSA is the same file but far slower
+const PLANCK_SMICA =
+  'https://pla.esac.esa.int/pla-sl/data-action?MAP.MAP_ID=COM_CMB_IQU-smica_2048_R3.00_full.fits';
+const CMB_NSIDE = 256;
+const CMB_RANGE = 400e-6;
+const CMB_W = 2048;
+
+// HEALPix nested pixel of a direction, after Gorski et al. (2005)
+function ang2pixNest(nside: number, z: number, phi: number) {
+  const za = Math.abs(z);
+  const tt = ((((phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) * 2) / Math.PI;
+  let face: number;
+  let ix: number;
+  let iy: number;
+  if (za <= 2 / 3) {
+    const t1 = nside * (0.5 + tt);
+    const t2 = nside * z * 0.75;
+    const jp = Math.floor(t1 - t2);
+    const jm = Math.floor(t1 + t2);
+    const ifp = Math.floor(jp / nside);
+    const ifm = Math.floor(jm / nside);
+    face = ifp === ifm ? ifp | 4 : ifp < ifm ? ifp : ifm + 8;
+    ix = jm & (nside - 1);
+    iy = nside - (jp & (nside - 1)) - 1;
+  } else {
+    const ntt = Math.min(3, Math.floor(tt));
+    const tp = tt - ntt;
+    const tmp = nside * Math.sqrt(3 * (1 - za));
+    const jp = Math.min(nside - 1, Math.floor(tp * tmp));
+    const jm = Math.min(nside - 1, Math.floor((1 - tp) * tmp));
+    if (z >= 0) {
+      face = ntt;
+      ix = nside - jm - 1;
+      iy = nside - jp - 1;
+    } else {
+      face = ntt + 8;
+      ix = jp;
+      iy = jm;
+    }
+  }
+  // interleave: x into the even bits, y into the odd
+  let pix = 0;
+  for (let b = 0; 1 << b < nside; b++) {
+    pix |= ((ix >> b) & 1) << (2 * b);
+    pix |= ((iy >> b) & 1) << (2 * b + 1);
+  }
+  return face * nside * nside + pix;
+}
+
+function png(width: number, height: number, grey: Uint8Array) {
+  const chunk = (type: string, data: Buffer) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, 'latin1');
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])), 0);
+    return Buffer.concat([head, data, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 0;
+  const raw = Buffer.alloc((width + 1) * height);
+  for (let y = 0; y < height; y++) {
+    raw.set(grey.subarray(y * width, (y + 1) * width), y * (width + 1) + 1);
+  }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+async function cmb() {
+  console.log('cmb');
+  const down = 4 ** Math.log2(2048 / CMB_NSIDE);
+  const sum = new Float64Array(12 * CMB_NSIDE * CMB_NSIDE);
+  // the confidence mask, which covers the Galaxy's plane: written out with CMB_CHECK to see the resampling is right
+  const mask = new Float64Array(sum.length);
+  let i = 0;
+  await readFits(PLANCK_SMICA, ['I_STOKES_INP', 'TMASK'], ([t, m]) => {
+    sum[Math.floor(i / down)] += t;
+    mask[Math.floor(i / down)] += m;
+    i++;
+    if (i % 5000000 === 0) {
+      process.stdout.write(`\r  ${Math.round(i / 1e6)}M pixels`);
+    }
+  });
+  console.log('');
+  const eps = (23.4392911 * Math.PI) / 180;
+  // J2000 equatorial to galactic
+  const G = [
+    [-0.0548755604, -0.87343709, -0.4838350155],
+    [0.4941094279, -0.44482963, 0.7469822445],
+    [-0.867666149, -0.1980763734, 0.4559837762],
+  ];
+  const h = CMB_W / 2;
+  const grey = new Uint8Array(CMB_W * h);
+  const check = new Uint8Array(CMB_W * h);
+  for (let v = 0; v < h; v++) {
+    const lat = Math.PI / 2 - ((v + 0.5) / h) * Math.PI;
+    for (let u = 0; u < CMB_W; u++) {
+      const lon = ((u + 0.5) / CMB_W) * 2 * Math.PI;
+      const ex = Math.cos(lat) * Math.cos(lon);
+      const ey = Math.cos(lat) * Math.sin(lon);
+      const ez = Math.sin(lat);
+      const q = [ex, ey * Math.cos(eps) - ez * Math.sin(eps), ey * Math.sin(eps) + ez * Math.cos(eps)];
+      const g = G.map((r) => r[0] * q[0] + r[1] * q[1] + r[2] * q[2]);
+      const pix = ang2pixNest(CMB_NSIDE, g[2], Math.atan2(g[1], g[0]));
+      const t = sum[pix] / down;
+      check[v * CMB_W + u] = Math.round((mask[pix] / down) * 255);
+      grey[v * CMB_W + u] = Math.max(0, Math.min(255, Math.round(((t / CMB_RANGE + 1) / 2) * 255)));
+    }
+  }
+  writeFileSync(join(TEX, 'cmb_planck.png'), png(CMB_W, h, grey));
+  if (process.env.CMB_CHECK) {
+    writeFileSync(process.env.CMB_CHECK, png(CMB_W, h, check));
+  }
+  console.log(`  cmb_planck.png`);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -1217,6 +1354,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   redshifts,
   sdss,
   desi,
+  cmb,
   textures,
 };
 const pick = process.argv.slice(2);

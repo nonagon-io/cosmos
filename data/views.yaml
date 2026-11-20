@@ -94,3 +94,8 @@
   focus: milky-way
   distance: 2200000000000000
   tilt: 35
+- id: observable-universe
+  name: เอกภพที่สังเกตได้
+  focus: milky-way
+  distance: 7500000000000000
+  tilt: 35

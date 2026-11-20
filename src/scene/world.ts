@@ -18,6 +18,7 @@ import { t } from '../i18n';
 import type { Store } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
+import { Cmb } from './cmb';
 import { Cosmicflows, WEB_LAYER } from './cosmicflows';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
@@ -127,6 +128,7 @@ export class World {
   private readonly localGroup: LocalGroup;
   private readonly localVolume: LocalVolume;
   private readonly cosmicflows: Cosmicflows;
+  private readonly cmb: Cmb;
   private readonly surveys: Survey[] = [];
   /** Galaxies other than ours, where the Solar System's dates mean nothing however close the camera is. */
   private readonly otherGalaxies: Set<string>;
@@ -241,6 +243,7 @@ export class World {
       store.data.regions.filter((r) => r.at?.type === 'galaxy' && !r.at.home).map((r) => `region:${r.id}`),
     );
     this.cosmicflows = new Cosmicflows(this.world, cosmicflows);
+    this.cmb = new Cmb(this.world, `${import.meta.env.BASE_URL}textures/cmb_planck.png`);
     this.localVolume = new LocalVolume(
       this.world,
       localVolume,
@@ -351,6 +354,7 @@ export class World {
     this.localGroup.setTime(shift, drift, this.store.myr);
     this.localVolume.setTime(shift);
     this.cosmicflows.setTime(shift);
+    this.cmb.setTime(shift);
     for (const s of this.surveys) {
       s.setTime(shift);
     }
@@ -506,6 +510,7 @@ export class World {
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
+    this.cmb.update(Math.hypot(cx, cy, cz));
     for (const s of this.surveys) {
       s.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs);
     }

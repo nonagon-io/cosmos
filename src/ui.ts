@@ -27,6 +27,8 @@ const FIELD_NOTE_AU = 2e6;
 // past the measured stars, until the measured galaxies
 const FIELD_NOTE_END_AU = 3e9;
 const GALAXY_NOTE_AU = 2.2e12;
+// near enough the microwave background's sphere to see it
+const CMB_NOTE_AU = 2.4e15;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const hypot = (a: Vec, b: Vec = [0, 0, 0]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -89,9 +91,10 @@ export function setupUI(store: Store, act: Actions) {
     // out among the stars, and again among the galaxies, say up front that the catalogue thins with distance
     const galaxies = distance > GALAXY_NOTE_AU;
     fieldNote.hidden = !galaxies && (distance < FIELD_NOTE_AU || distance > FIELD_NOTE_END_AU);
-    if (noteFor !== (galaxies ? 'galaxy-field' : 'star-field')) {
-      noteFor = galaxies ? 'galaxy-field' : 'star-field';
-      fieldText.textContent = galaxies ? t.galaxyNote : t.fieldNote;
+    const note = distance > CMB_NOTE_AU ? 'cmb' : galaxies ? 'galaxy-field' : 'star-field';
+    if (noteFor !== note) {
+      noteFor = note;
+      fieldText.textContent = note === 'cmb' ? t.cmbNote : galaxies ? t.galaxyNote : t.fieldNote;
     }
     const can = act.canChase();
     chaseBtn.hidden = !can;
