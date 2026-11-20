@@ -1,5 +1,16 @@
 import { type AstroTime, MakeTime } from 'astronomy-engine';
-import { Group, MathUtils, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
+import {
+  AdditiveBlending,
+  Group,
+  MathUtils,
+  PerspectiveCamera,
+  Scene,
+  type ShaderMaterial,
+  Sprite,
+  SpriteMaterial,
+  Vector3,
+  WebGLRenderer,
+} from 'three';
 import { type Ephemeris, J2000, type OrbitData } from '../astro/ephemeris';
 import { type PeriElements, periodDays, type Vec } from '../astro/kepler';
 import type { Body, Kind } from '../data/schema';
@@ -11,8 +22,12 @@ import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
-import { NearStars, type StarData, skyStars } from './stars';
+import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
 import { CometTails } from './tails';
+import { haze } from './textures';
+
+// star names shown at once out among the stars
+const STAR_LABELS = 24;
 
 const PRIORITY: Record<Kind, number> = {
   star: 80,
@@ -53,6 +68,10 @@ export class World {
   readonly renderer: WebGLRenderer;
   readonly rig: CameraRig;
   readonly positions = new Map<string, Vec>();
+  // camera position in the ecliptic frame, AU from the Sun
+  private camPos: Vec = [0, 0, 0];
+  // clusters and nebulae: fixed ecliptic positions in AU, and a glow for the nebulae
+  private readonly deepSky: { id: string; pos: Vec; radius: number; glow: Sprite | null }[] = [];
   readonly projected = new Map<string, Projected>();
   private readonly scene = new Scene();
   private readonly world = new Group();
@@ -65,7 +84,8 @@ export class World {
   private readonly oort: OortCloud;
   private readonly heliosphere: Heliosphere;
   private readonly tails: CometTails;
-  private readonly nearStars: NearStars;
+  private readonly stars3d: Stars3D;
+  private readonly skyMat: ShaderMaterial;
   private readonly labels: Labels;
   private width = 1;
   private height = 1;
@@ -79,6 +99,7 @@ export class World {
     private readonly orbitData: OrbitData,
     elementSets: ElementSets,
     readonly stars: StarData,
+    field: StarField,
     onPick: (id: string) => void,
   ) {
     this.renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -94,7 +115,7 @@ export class World {
     const skyRoot = new Group();
     skyRoot.rotation.x = -Math.PI / 2;
     this.sky.add(skyRoot);
-    skyStars(skyRoot, stars);
+    this.skyMat = skyStars(skyRoot, stars);
 
     // parents before their moons, so each frame can add the parent's position
     const depth = (b: Body): number => (b.parent ? 1 + depth(store.bodyById.get(b.parent) as Body) : 0);
@@ -114,8 +135,33 @@ export class World {
     this.oort = new OortCloud(this.world);
     this.heliosphere = new Heliosphere(this.world);
     this.tails = new CometTails(this.world, store.data.bodies, (id) => eph.perihelion(id));
-    this.nearStars = new NearStars(this.world, stars.near);
+    this.stars3d = new Stars3D(this.world, field);
     this.labels = new Labels(labelRoot, onPick);
+    for (const r of store.data.regions) {
+      if (!r.at) {
+        continue;
+      }
+      const dir = eclipticDir(r.at.ra, r.at.dec);
+      const d = r.at.ly * AU_PER_LY;
+      const pos: Vec = [dir[0] * d, dir[1] * d, dir[2] * d];
+      let glow: Sprite | null = null;
+      if (r.at.glow) {
+        glow = new Sprite(
+          new SpriteMaterial({
+            map: haze(),
+            color: r.at.glow,
+            blending: AdditiveBlending,
+            depthWrite: false,
+            transparent: true,
+            opacity: 0.6,
+          }),
+        );
+        glow.position.set(...pos);
+        glow.scale.setScalar(r.at.radius * AU_PER_LY * 2.5);
+        this.world.add(glow);
+      }
+      this.deepSky.push({ id: `region:${r.id}`, pos, radius: r.at.radius * AU_PER_LY, glow });
+    }
 
     const { focus, distance } = store.data.timeline.initialView;
     this.rig = new CameraRig(
@@ -195,6 +241,9 @@ export class World {
   /** Positions of every body at `day`, parents first. */
   private computePositions(day: number, time: AstroTime) {
     this.positions.clear();
+    for (const o of this.deepSky) {
+      this.positions.set(o.id, o.pos);
+    }
     for (const b of this.order) {
       if (!this.eph.exists(b.id, day)) {
         continue;
@@ -229,6 +278,7 @@ export class World {
     const cx = focus[0] + camOffset[0];
     const cy = focus[1] + camOffset[1];
     const cz = focus[2] + camOffset[2];
+    this.camPos = [cx, cy, cz];
     this.world.position.set(-focus[0], -focus[1], -focus[2]);
     this.world.updateMatrixWorld();
 
@@ -290,7 +340,16 @@ export class World {
       (p) => this.rig.pxPerAu(Math.max(1e-12, Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz)), this.height),
       layers.trueSize,
     );
-    this.nearStars.update(pr, camDist);
+    // the sky sphere only holds stars with no distance; once we leave the Sun they would be in the wrong place
+    this.skyMat.uniforms.opacity.value = 1 - Stars3D.presence(camDist);
+    this.stars3d.update(1, Math.hypot(cx, cy, cz), camDist);
+    for (const o of this.deepSky) {
+      if (o.glow) {
+        const d = Math.hypot(o.pos[0] - cx, o.pos[1] - cy, o.pos[2] - cz);
+        // seen from inside, a nebula is too thin to glow like this
+        (o.glow.material as SpriteMaterial).opacity = 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
+      }
+    }
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(cam.quaternion);
@@ -415,10 +474,33 @@ export class World {
 
     // regions get a label at the scales where they make sense
     for (const reg of this.store.data.regions) {
-      if (camDist < reg.view / 9 || camDist > reg.view * 6) {
+      const at = this.deepSky.find((o) => o.id === `region:${reg.id}`);
+      // a cluster is labelled by how far the camera is from it, a shell around the Sun by the zoom
+      const d = at
+        ? Math.hypot(at.pos[0] - this.camPos[0], at.pos[1] - this.camPos[1], at.pos[2] - this.camPos[2])
+        : camDist;
+      if (d < reg.view / 9 || d > reg.view * 6) {
         continue;
       }
-      const mid = reg.id === 'oort-cloud' ? reg.outer * 0.8 : (reg.inner + reg.outer) / 2;
+      if (at) {
+        const s = this.screenOf(at.pos);
+        if (s) {
+          entries.push({
+            id: `region:${reg.id}`,
+            text: reg.name,
+            x: s.x,
+            y: s.y,
+            priority: 90,
+            color: '#c9b8ff',
+            className: 'region dso',
+            offset: 10,
+          });
+        }
+        continue;
+      }
+      const inner = reg.inner ?? 0;
+      const outer = reg.outer ?? 0;
+      const mid = reg.id === 'oort-cloud' ? outer * 0.8 : (inner + outer) / 2;
       const ang = MathUtils.degToRad(reg.id === 'oort-cloud' ? 40 : 205);
       const s = this.screenOf([
         Math.cos(ang) * mid,
@@ -439,22 +521,31 @@ export class World {
       }
     }
 
-    const presence = NearStars.presence(camDist);
-    if (presence > 0.3) {
-      for (const [i, s] of this.stars.near.entries()) {
-        const p = this.screenOf([s.x, s.y, s.z]);
+    if (Stars3D.presence(camDist) > 0.3) {
+      const exposure = Stars3D.exposure(Math.hypot(...this.camPos));
+      const bright: { i: number; name: string; mag: number; x: number; y: number }[] = [];
+      for (const [i, name] of this.stars.labels) {
+        const sp = this.stars3d.position(i);
+        const d = Math.hypot(sp[0] - this.camPos[0], sp[1] - this.camPos[1], sp[2] - this.camPos[2]);
+        // label the ones that look brightest from here
+        const mag = this.stars3d.absmag(i) + 5 * Math.log10(d / 206264.806) - 5 - exposure;
+        const p = mag < 3 ? this.screenOf(sp) : null;
         if (p) {
-          entries.push({
-            id: `star:${i}`,
-            text: t.starNames.get(s.name) ?? s.name,
-            x: p.x,
-            y: p.y,
-            priority: 60 - s.absmag,
-            color: '#ffe9c4',
-            className: 'star',
-            offset: 8,
-          });
+          bright.push({ i, name, mag, x: p.x, y: p.y });
         }
+      }
+      bright.sort((a, b) => a.mag - b.mag);
+      for (const s of bright.slice(0, STAR_LABELS)) {
+        entries.push({
+          id: `star:${s.i}`,
+          text: t.starNames.get(s.name) ?? s.name,
+          x: s.x,
+          y: s.y,
+          priority: 60 - s.mag * 4,
+          color: '#ffe9c4',
+          className: 'star',
+          offset: 8,
+        });
       }
     }
     this.labels.render(entries);

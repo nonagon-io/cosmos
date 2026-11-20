@@ -195,7 +195,10 @@ export class OortCloud {
 
   update(pixelRatio: number, visible: boolean, camDist: number, trueSize = false) {
     // seen from inside it would only be a haze over the whole sky, so it appears as the camera leaves it
-    const k = MathUtils.smoothstep(Math.log10(camDist), 2.9, 3.9);
+    // and from tens of light years it shrinks to a few pixels, where its points only pile up on each other
+    const k =
+      MathUtils.smoothstep(Math.log10(camDist), 2.9, 3.9) *
+      (1 - MathUtils.smoothstep(Math.log10(camDist), 6.3, 6.9));
     this.points.visible = visible && k > 0.01;
     this.mat.uniforms.opacity.value = 0.42 * k * (trueSize ? 0.03 : 1);
     this.mat.uniforms.size.value = (trueSize ? 0.7 : 1.4) * pixelRatio;

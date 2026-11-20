@@ -371,9 +371,12 @@ export class BodyVisual {
     this.marker.scale.setScalar((px * 2) / pxPerAu);
     if (this.glare) {
       // glare at least a bright star's size, and never smaller than a few solar radii
-      const glarePx = trueSize
+      let glarePx = trueSize
         ? Math.max(screenR * 7, 2)
         : Math.max(screenR * 7, Math.min(90, 26 + 8 * Math.log10(1 + 1 / Math.max(camDist, 1e-9))));
+      // light years out, the Sun is one star among many
+      const far = MathUtils.smoothstep(Math.log10(camDist), 5.5, 7);
+      glarePx = glarePx * (1 - far) + Math.max(screenR * 7, 7) * far;
       this.glare.scale.setScalar((glarePx * 2) / pxPerAu);
       this.marker.visible = false;
     }

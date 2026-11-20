@@ -82,6 +82,11 @@ export const en: Dict = {
   ]),
   model: 'Model',
   illustrated: 'Illustrated surface; no real images exist yet',
+  dsoKinds: { cluster: 'Star cluster', nebula: 'Nebula' },
+  starField:
+    'Every star is at its real position, from distances measured by parallax (the HYG database). But the catalogue is only complete for stars bright enough to measure from Earth, so farther out only the very bright ones are left. That makes the stars look crowded around the Sun and thinning out, which is not true; stars in this part of the galaxy are spread about evenly. Distances beyond about a thousand light years can be well off. Seen from outside the Solar System, the stars are brightened as a long exposure would, or you would hardly see any.',
+  nebulaGlow:
+    'The glow is a simple stand-in, with the color and size roughly as photographed, not the real shape of the nebula.',
   guessShape:
     'Simulated: no telescope has resolved this nucleus, only the cloud of gas and dust around it. The app shows a dark, lumpy ball of ice and rock like the comet nuclei spacecraft have photographed, sized at the middle of the estimates.',
   modelShape:

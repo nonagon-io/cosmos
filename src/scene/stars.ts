@@ -10,28 +10,22 @@ import {
 } from 'three';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
 
-export interface NearStar {
-  name: string;
-  x: number;
-  y: number;
-  z: number;
-  mag: number;
-  absmag: number;
-  ci: number;
-  ly: number;
+export interface StarData {
+  // naked-eye stars with no usable distance, drawn on the sky sphere: flat [ra deg, dec deg, magnitude, B-V]
+  sky: number[];
+  // [index into the field, name]
+  labels: [number, string][];
 }
 
-export interface StarData {
-  // flat [ra deg, dec deg, magnitude, B-V] per star
-  sky: number[];
-  names: [number, number, string][];
-  near: NearStar[];
-}
+/** Stars at their real 3D positions: flat [x, y, z (ecliptic light years), absolute magnitude, B-V]. */
+export type StarField = Float32Array;
+
+export const AU_PER_LY = 63241.077;
 
 const OBLIQUITY = 23.4392911 * MathUtils.DEG2RAD;
 
 /** Unit vector in the ecliptic frame for an equatorial RA/Dec in degrees. */
-function eclipticDir(ra: number, dec: number): [number, number, number] {
+export function eclipticDir(ra: number, dec: number): [number, number, number] {
   const a = ra * MathUtils.DEG2RAD;
   const d = dec * MathUtils.DEG2RAD;
   const x = Math.cos(d) * Math.cos(a);
@@ -91,7 +85,7 @@ void main() {
 `;
 
 /** Naked-eye stars on the sky sphere, rendered in their own scene with a rotation-only camera. */
-export function skyStars(parent: Group, data: StarData) {
+export function skyStars(parent: Group, data: StarData): ShaderMaterial {
   const n = data.sky.length / 4;
   const pos = new Float32Array(n * 3);
   const mag = new Float32Array(n);
@@ -122,67 +116,100 @@ export function skyStars(parent: Group, data: StarData) {
   return mat;
 }
 
-const nearVert = /* glsl */ `
+const fieldVert = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
 attribute vec3 aColor;
-attribute float aSize;
+attribute float aAbs;
 uniform float scale;
+uniform float exposure;
+uniform float floor;
 varying vec3 vColor;
+varying float vAlpha;
 void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  // apparent magnitude from the camera, brightened by the exposure once we are out among the stars
+  float pc = max(length(mv.xyz) / 206264.806, 1e-7);
+  float mag = aAbs + 5.0 * log(pc) / log(10.0) - 5.0 - exposure;
+  float flux = pow(10.0, -0.4 * mag);
+  gl_PointSize = clamp(1.6 + 2.4 * pow(flux, 0.3), 1.6, 9.0) * scale;
+  // the same look as the sky sphere, and the naked-eye limit there
+  vAlpha = clamp(floor + flux * 3.0, floor, 1.0) * (1.0 - smoothstep(6.2, 7.0, mag));
   vColor = aColor;
-  gl_PointSize = aSize * scale;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
   ${LOGDEPTH_VERT}
 }
 `;
 
-const nearFrag = /* glsl */ `
+const fieldFrag = /* glsl */ `
 ${LOGDEPTH_FRAG_PARS}
 uniform float opacity;
 varying vec3 vColor;
+varying float vAlpha;
 void main() {
   ${LOGDEPTH_FRAG}
+  if (vAlpha < 0.004) discard;
   float d = length(gl_PointCoord - 0.5) * 2.0;
-  float a = exp(-d * d * 4.0) + 0.6 * exp(-d * d * 40.0);
-  gl_FragColor = vec4(vColor, a * opacity);
+  float a = exp(-d * d * 5.0);
+  gl_FragColor = vec4(vColor, a * vAlpha * opacity);
   #include <colorspace_fragment>
 }
 `;
 
-/** Stars within 17 light years at their real positions, for when the camera is out among them. */
-export class NearStars {
+/**
+ * Every catalogued star with a distance, at its real position. Seen from the Solar System it is the same sky as
+ * the sky sphere; flown out of it, the stars spread out into 3D.
+ */
+export class Stars3D {
   private readonly mat: ShaderMaterial;
-  private readonly points: Points;
+  readonly count: number;
 
   constructor(
     parent: Group,
-    readonly stars: NearStar[],
+    readonly field: StarField,
   ) {
-    const pos = new Float32Array(stars.length * 3);
-    const col = new Float32Array(stars.length * 3);
-    const size = new Float32Array(stars.length);
-    for (const [i, s] of stars.entries()) {
-      pos.set([s.x, s.y, s.z], i * 3);
-      const c = starColor(s.ci);
+    const n = field.length / 5;
+    this.count = n;
+    const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const abs = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = field[i * 5] * AU_PER_LY;
+      pos[i * 3 + 1] = field[i * 5 + 1] * AU_PER_LY;
+      pos[i * 3 + 2] = field[i * 5 + 2] * AU_PER_LY;
+      abs[i] = field[i * 5 + 3];
+      const c = starColor(field[i * 5 + 4]);
       col.set([c.r, c.g, c.b], i * 3);
-      // brighter stars (lower absolute magnitude) draw bigger
-      size[i] = MathUtils.clamp(9 - s.absmag * 0.45, 3, 10);
     }
     const g = new BufferGeometry();
     g.setAttribute('position', new BufferAttribute(pos, 3));
     g.setAttribute('aColor', new BufferAttribute(col, 3));
-    g.setAttribute('aSize', new BufferAttribute(size, 1));
+    g.setAttribute('aAbs', new BufferAttribute(abs, 1));
     this.mat = new ShaderMaterial({
-      vertexShader: nearVert,
-      fragmentShader: nearFrag,
-      uniforms: { scale: { value: 1 }, opacity: { value: 0 } },
+      vertexShader: fieldVert,
+      fragmentShader: fieldFrag,
+      uniforms: {
+        scale: { value: 1 },
+        opacity: { value: 1 },
+        exposure: { value: 0 },
+        floor: { value: 0.25 },
+      },
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,
     });
-    this.points = new Points(g, this.mat);
-    this.points.frustumCulled = false;
-    parent.add(this.points);
+    const points = new Points(g, this.mat);
+    points.frustumCulled = false;
+    parent.add(points);
+  }
+
+  /** Ecliptic position in AU of star `i`. */
+  position(i: number): [number, number, number] {
+    const f = this.field;
+    return [f[i * 5] * AU_PER_LY, f[i * 5 + 1] * AU_PER_LY, f[i * 5 + 2] * AU_PER_LY];
+  }
+
+  absmag(i: number) {
+    return this.field[i * 5 + 3];
   }
 
   /** 0..1: how far the camera is into interstellar distances. */
@@ -190,10 +217,18 @@ export class NearStars {
     return MathUtils.smoothstep(Math.log10(camDist), 4.6, 5.4);
   }
 
-  update(pixelRatio: number, camDist: number) {
-    const k = NearStars.presence(camDist);
-    this.points.visible = k > 0.01;
-    this.mat.uniforms.opacity.value = k;
+  /**
+   * Out among the stars almost all of them are too faint for the eye; brighten them as a long exposure would,
+   * by a magnitude shift that grows with the camera's distance from the Sun (in AU).
+   */
+  static exposure(sunDist: number) {
+    return 3 * Math.log10(Math.max(1, sunDist / AU_PER_LY / 15));
+  }
+
+  update(pixelRatio: number, sunDist: number, camDist: number) {
     this.mat.uniforms.scale.value = pixelRatio;
+    this.mat.uniforms.exposure.value = Stars3D.exposure(sunDist);
+    // tens of thousands of faint stars piled up read as a white wall; keep the faint ones quieter out there
+    this.mat.uniforms.floor.value = 0.25 * (1 - 0.65 * Stars3D.presence(camDist));
   }
 }

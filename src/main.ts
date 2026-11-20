@@ -4,7 +4,7 @@ import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
 import type { ElementSets } from './scene/particles';
-import type { StarData } from './scene/stars';
+import type { StarData, StarField } from './scene/stars';
 import { World } from './scene/world';
 import { setupSearch } from './search';
 import { Store } from './store';
@@ -59,18 +59,26 @@ async function start() {
   let orbitData: OrbitData;
   let sets: ElementSets;
   let stars: StarData;
+  let field: StarField;
   try {
-    const [moons, named, craft, planets, small, starData] = await Promise.all([
+    const [moons, named, craft, planets, small, starData, fieldData] = await Promise.all([
       json<OrbitData['moons']>('moons.json'),
       json<OrbitData['named']>('named.json'),
       json<OrbitData['craft']>('spacecraft.json'),
       json<OrbitData['planets']>('planets.json'),
       json<ElementSets>('small-bodies.json'),
       json<StarData>('stars.json'),
+      fetch(`${BASE}data/field.bin`).then((r) => {
+        if (!r.ok) {
+          throw new Error(`field.bin: ${r.status}`);
+        }
+        return r.arrayBuffer();
+      }),
     ]);
     orbitData = { moons, named, craft, planets };
     sets = small;
     stars = starData;
+    field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);
     return;
@@ -90,6 +98,7 @@ async function start() {
     orbitData,
     sets,
     stars,
+    field,
     (id) => pickLabel(id),
   );
   const rig = world.rig;
@@ -136,7 +145,7 @@ async function start() {
     },
     goToRegion(r: Region) {
       store.select({ kind: 'region', region: r });
-      rig.flyTo('sun', r.view);
+      rig.flyTo(r.at ? `region:${r.id}` : 'sun', r.view);
     },
     goToEvent(e: SpaceEvent) {
       store.setPlaying(false);
@@ -150,7 +159,7 @@ async function start() {
     positionOf: (id: string) => world.positions.get(id) ?? null,
     velocityOf: (id: string) => eph.velocity(id, store.day),
     camera: () => ({ focus: rig.focusId, distance: rig.distance }),
-    canChase: () => rig.focusId !== 'sun',
+    canChase: () => store.bodyById.has(rig.focusId) && rig.focusId !== 'sun',
     chase(on?: boolean) {
       if (on !== undefined) {
         rig.setChase(on);

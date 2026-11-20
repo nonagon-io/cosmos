@@ -523,11 +523,14 @@ async function planets() {
 
 // ---- stars ----
 
-// The sky drawn at infinity: stars to about naked-eye limit. Stars within NEAR_LY also get a real 3D position.
+// Every star with a usable distance within FIELD_LY goes into field.bin at its real 3D position, and the app
+// works out how bright it looks from wherever the camera is. Naked-eye stars without one stay on the sky sphere.
 const MAG_LIMIT = 6.8;
+const FIELD_LY = 3000;
 const NEAR_LY = 17;
-const AU_PER_PC = 206264.806;
 const LY_PER_PC = 3.26156;
+// HYG gives 100000 pc to stars with no parallax
+const NO_DIST = 100000;
 
 const GREEK: Record<string, string> = {
   Alp: 'α',
@@ -581,17 +584,9 @@ async function stars() {
     'gl',
   ].map(col);
   const sky: number[] = [];
-  const names: [number, number, string][] = [];
-  const near: {
-    name: string;
-    x: number;
-    y: number;
-    z: number;
-    mag: number;
-    absmag: number;
-    ci: number;
-    ly: number;
-  }[] = [];
+  const field: number[] = [];
+  // [index into the field, name]: nearby stars by any catalogue name, farther ones only by a proper name
+  const labels: [number, string][] = [];
   const eps = (23.4392911 * Math.PI) / 180;
   for (const line of lines.slice(2)) {
     const f = line.split(',').map((s) => s.replace(/"/g, ''));
@@ -601,43 +596,33 @@ async function stars() {
     const mag = Number(f[cMag]);
     const ci = Number(f[cCi]) || 0.6;
     const dist = Number(f[cDist]);
-    const ra = Number(f[cRa]) * 15;
-    const dec = Number(f[cDec]);
-    if (mag < MAG_LIMIT) {
-      sky.push(round(ra, 6), round(dec, 6), round(mag, 3), round(ci, 3));
-      if (f[cProper] && mag < 2.6) {
-        names.push([round(ra, 6), round(dec, 6), f[cProper]]);
+    const ly = dist * LY_PER_PC;
+    if (!(dist > 0 && dist < NO_DIST && ly < FIELD_LY)) {
+      if (mag < MAG_LIMIT) {
+        sky.push(round(Number(f[cRa]) * 15, 6), round(Number(f[cDec]), 6), round(mag, 3), round(ci, 3));
       }
+      continue;
     }
-    if (dist > 0 && dist * LY_PER_PC < NEAR_LY) {
-      // HYG x, y, z are equatorial parsecs; turn them into ecliptic AU
-      const x = Number(f[cX]) * AU_PER_PC;
-      const y = Number(f[cY]) * AU_PER_PC;
-      const z = Number(f[cZ]) * AU_PER_PC;
-      const ey = y * Math.cos(eps) + z * Math.sin(eps);
-      const ez = -y * Math.sin(eps) + z * Math.cos(eps);
-      // a proper name, else Bayer or Flamsteed with the constellation, else the Gliese number
+    // HYG x, y, z are equatorial parsecs; turn them into ecliptic light years
+    const x = Number(f[cX]) * LY_PER_PC;
+    const y = Number(f[cY]) * LY_PER_PC;
+    const z = Number(f[cZ]) * LY_PER_PC;
+    const absmag = mag - 5 * (Math.log10(dist) - 1);
+    const i = field.length / 5;
+    field.push(x, y * Math.cos(eps) + z * Math.sin(eps), -y * Math.sin(eps) + z * Math.cos(eps), absmag, ci);
+    let name = f[cProper];
+    if (!name && ly < NEAR_LY) {
+      // Bayer or Flamsteed with the constellation, else the Gliese number
       const greek = GREEK[f[cBayer].replace(/-\d+$/, '')];
-      const catalog = greek ? `${greek} ${f[cCon]}` : f[cFlam] ? `${f[cFlam]} ${f[cCon]}` : f[cGl];
-      const name = f[cProper] || catalog || '';
-      if (!name) {
-        continue;
-      }
-      const absmag = mag - 5 * (Math.log10(dist) - 1);
-      near.push({
-        name,
-        x: Math.round(x),
-        y: Math.round(ey),
-        z: Math.round(ez),
-        mag,
-        absmag: round(absmag, 3),
-        ci,
-        ly: round(dist * LY_PER_PC, 4),
-      });
+      name = greek ? `${greek} ${f[cCon]}` : f[cFlam] ? `${f[cFlam]} ${f[cCon]}` : f[cGl];
+    }
+    if (name && name !== 'Sol') {
+      labels.push([i, name]);
     }
   }
-  console.log(`  ${sky.length / 4} sky stars, ${near.length} near stars`);
-  save('stars.json', { sky, names, near });
+  console.log(`  ${field.length / 5} stars in 3D, ${sky.length / 4} on the sky only, ${labels.length} named`);
+  writeFileSync(join(DATA, 'field.bin'), Buffer.from(new Float32Array(field).buffer));
+  save('stars.json', { sky, labels });
 }
 
 // ---- textures ----

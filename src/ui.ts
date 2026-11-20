@@ -3,6 +3,7 @@ import { periodDays, type Vec } from './astro/kepler';
 import type { Body, Region, SpaceEvent } from './data/schema';
 import { esc, fmtDistance, fmtLightTime, fmtMass, fmtPeriod } from './format';
 import { t } from './i18n';
+import { AU_PER_LY } from './scene/stars';
 import type { Layers, Store } from './store';
 
 export interface Actions {
@@ -57,7 +58,10 @@ export function setupUI(store: Store, act: Actions) {
   let lastCam = '';
   const renderCamera = () => {
     const { focus, distance } = act.camera();
-    const name = store.bodyById.get(focus)?.name ?? '';
+    const name =
+      store.bodyById.get(focus)?.name ??
+      (focus.startsWith('region:') ? store.regionById.get(focus.slice(7))?.name : undefined) ??
+      '';
     const text = `${t.camera}<strong>${fmtDistance(distance)}</strong>${esc(t.from(name))}`;
     if (text !== lastCam) {
       cam.innerHTML = text;
@@ -190,14 +194,22 @@ export function setupUI(store: Store, act: Actions) {
       <div class="go-row"><button type="button" class="go" data-go>${t.goTo}</button><button type="button" class="go" data-center title="${esc(t.centerTip)}">${t.centerOn}</button></div>`;
   };
 
-  const regionCard = (r: Region) => `
-      <p class="eyebrow">${t.region}${r.model ? ` · ${t.model}` : ''}</p>
+  const regionCard = (r: Region) => {
+    const at = r.at;
+    const rows = at
+      ? `<dt>${t.distSun}</dt><dd>${fmtDistance(at.ly * AU_PER_LY)}</dd><dt>${t.size}</dt><dd>${fmtDistance(at.radius * 2 * AU_PER_LY)}</dd>`
+      : `<dt>${t.span}</dt><dd>${fmtDistance(r.inner ?? 0)} – ${fmtDistance(r.outer ?? 0)}<small>${esc(t.lightTime(fmtLightTime(r.outer ?? 0)))}</small></dd>`;
+    return `
+      <p class="eyebrow">${at ? t.dsoKinds[at.type] : t.region}${r.model ? ` · ${t.model}` : ''}</p>
       <h2>${esc(r.name)}</h2><p class="sub"></p>
-      <dl><dt>${t.span}</dt><dd>${fmtDistance(r.inner)} – ${fmtDistance(r.outer)}<small>${esc(t.lightTime(fmtLightTime(r.outer)))}</small></dd></dl>
+      <dl>${rows}</dl>
+      ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
+      ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}
       <p>${esc(r.desc)}</p>
       <div class="go-row"><button type="button" class="go" data-go>${t.goTo}</button></div>`;
+  };
 
   const eventCard = (e: SpaceEvent) => {
     const target = store.bodyById.get(e.focus);

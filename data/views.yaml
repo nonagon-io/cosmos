@@ -39,3 +39,11 @@
   name: ดาวฤกษ์ที่ใกล้ที่สุด
   focus: sun
   distance: 1400000
+- id: star-neighbourhood
+  name: ดาวในรัศมี 100 ปีแสง
+  focus: sun
+  distance: 19000000
+- id: star-field
+  name: ดาวที่วัดระยะได้
+  focus: sun
+  distance: 190000000

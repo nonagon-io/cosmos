@@ -38,7 +38,7 @@ Comet tails are a model too. Their directions follow the physics: the ion tail p
 
 Every body gets a marker dot a few pixels wide so you can find it from far away. The "True size" layer turns that off: spheres are drawn only at their real size, and anything smaller than a pixel becomes a single faint point. The Sun's glare shrinks the same way, and the small-body and Oort cloud dots fade to a faint trace. Normally those dots are hundreds of thousands of times bigger than the objects, which is why the belts look so crowded; the region cards explain this.
 
-Stars to magnitude 6.8 come from the [HYG database](https://github.com/astronexus/HYG-Database) (CC BY-SA 4.0). Those within 17 light years are also placed at their real distance, so they appear around the Sun when you zoom far enough out.
+Stars come from the [HYG database](https://github.com/astronexus/HYG-Database) (CC BY-SA 4.0). The 108,000 or so with a parallax distance within 3,000 light years are placed in 3D (`field.bin`), and the shader works out each one's magnitude from wherever the camera is, so from inside the Solar System they make up the night sky and further out they spread into the real neighbourhood. Out there the stars are brightened like a long exposure, or almost none would show. The catalogue is only complete for stars bright enough to measure from Earth, so the field looks thicker around the Sun than it is; the star-field card says so. The few hundred naked-eye stars without a usable distance stay on a sky sphere at infinity and fade out once the camera leaves the Sun. Clusters and nebulae are entries in `regions.yaml` with `at` (RA, Dec, light years); the nebula glows are simple stand-ins.
 
 ## Textures
 

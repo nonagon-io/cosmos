@@ -1,7 +1,8 @@
 import { MathUtils, PerspectiveCamera } from 'three';
 import type { Vec } from '../astro/kepler';
 
-export const MAX_DISTANCE = 2.5e6;
+// about 4,700 light years, room to see the 3,000 ly star field whole
+export const MAX_DISTANCE = 3e8;
 const ROTATE_PER_PX = 0.0055;
 const ZOOM_PER_WHEEL = 0.0016;
 

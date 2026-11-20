@@ -68,10 +68,25 @@ const Region = z.object({
   id,
   name: z.string(),
   en: z.string(),
-  inner: z.number().positive(),
-  outer: z.number().positive(),
+  // a shell around the Sun, `inner` to `outer` AU...
+  inner: z.number().positive().optional(),
+  outer: z.number().positive().optional(),
+  // ...or a cluster or nebula out among the stars: RA/Dec in degrees, distance and radius in light years, and
+  // for a nebula the color of the glow drawn for it
+  at: z
+    .object({
+      type: z.enum(['cluster', 'nebula']),
+      ra: z.number(),
+      dec: z.number(),
+      ly: z.number().positive(),
+      radius: z.number().positive(),
+      glow: color.optional(),
+    })
+    .optional(),
   view: z.number().positive(),
   model: z.boolean().optional(),
+  // the 3D star field: its card explains why it thins out with distance
+  stars: z.boolean().optional(),
   // drawn from the small-body catalogue, whose dots drift from their true places away from the present
   catalog: z.boolean().optional(),
   desc: z.string(),
@@ -170,6 +185,9 @@ export function buildDataset(raw: Record<string, string>): Dataset {
   }
   for (const r of d.regions) {
     ids.add(r.id);
+    if (!r.at && !(r.inner && r.outer)) {
+      problems.push(`regions.yaml: ${r.id}: ต้องมี inner กับ outer หรือ at`);
+    }
   }
   for (const b of d.bodies) {
     if (b.parent && !ids.has(b.parent)) {

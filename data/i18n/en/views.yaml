@@ -8,3 +8,5 @@ sednoids: { name: Sedna's orbit }
 inner-oort: { name: Inner Oort cloud }
 outer-oort: { name: Outer Oort cloud }
 nearest-stars: { name: Nearest stars }
+star-neighbourhood: { name: Stars within 100 light years }
+star-field: { name: Stars with measured distances }

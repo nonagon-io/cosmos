@@ -8,3 +8,21 @@ heliosphere:
   desc: The bubble of solar wind around the Solar System. Voyager 1 crossed the termination shock at 94 AU in 2004 and the heliopause at 121 AU in 2012, where the solar wind stops and interstellar space begins. The real shape trails out like a comet's tail; it is drawn here as a rough sphere.
 oort-cloud:
   desc: A spherical shell of perhaps trillions of icy bodies, the source of long-period comets. No object in the Oort cloud has ever been observed directly, so what you see is a model based on theory. The inner part is a thick disk from about 2,000 to 20,000 AU; the outer part is a sphere reaching about 100,000 AU, or 1.6 light years, nearly halfway to the next star. Voyager 1 will take about 300 years just to reach its inner edge.
+star-field:
+  desc: About 108,000 stars with measured distances within some 3,000 light years, every one at its real position. From inside the Solar System they are the night sky we see; fly out and the constellations come apart, their stars at very different distances. All of this is a small corner of the Milky Way, which is about 100,000 light years across.
+hyades:
+  desc: The nearest open cluster, about 153 light years away, the V at the head of Taurus. It is some 600–700 million years old. Aldebaran seems to sit in the middle of it but is much closer (65 light years), just in the same direction; fly round to the side to see it.
+coma-cluster:
+  desc: The open cluster Melotte 111 in Coma Berenices, about 280 light years away and the second nearest after the Hyades. To the eye it is a faint spray of stars several degrees wide.
+pleiades:
+  desc: The open cluster M45, about 444 light years away and some 100 million years old, very young next to the Sun (4.6 billion). The eye sees 6 or 7 stars, but it has over a thousand. The blue haze around it is dust reflecting starlight that the cluster happens to be passing through, not the cloud it was born from.
+ic2391:
+  desc: The open cluster IC 2391 in the southern sky, about 490 light years away and some 50 million years old.
+alpha-persei:
+  desc: The open cluster Melotte 20 around Mirfak in Perseus, about 570 light years away and some 50–70 million years old.
+praesepe:
+  desc: The open cluster M44 (Praesepe) in Cancer, about 577 light years away and 600–700 million years old. It is about as old as the Hyades and moves the same way, so the two may have formed from the same cloud. Galileo was the first to see through a telescope that it is dozens of stars.
+helix-nebula:
+  desc: The planetary nebula NGC 7293, one of the nearest, about 650 light years away. It is the shell of gas a Sun-like star threw off near the end of its life, around what is left of the star, a white dwarf. The Sun will do the same in about 5 billion years.
+orion-nebula:
+  desc: The nearest region forming massive stars, about 1,344 light years away. To the eye it is the fuzzy star in Orion's sword. The gas glows from the light of the very hot Trapezium stars at its heart, and hundreds of newborn stars and planet-forming disks lie inside.
