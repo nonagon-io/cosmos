@@ -441,6 +441,8 @@
   mass: 1.586e21
   rotation: 153.29
   color: '#a69c95'
+  texture: charon_newhorizons
+  unmapped: '#969696'
   desc: ใหญ่ราวครึ่งหนึ่งของพลูโต ทั้งสองต่างหันด้านเดียวเข้าหากัน
 
 - id: ceres

@@ -668,6 +668,9 @@ const TEXTURES = [
 const OTHER_TEXTURES: Record<string, string> = {
   pluto_newhorizons:
     'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Pluto_color_mapmosaic.jpg/1920px-Pluto_color_mapmosaic.jpg',
+  // PIA19866, grey, sub-Pluto longitude at the center
+  charon_newhorizons:
+    'https://assets.science.nasa.gov/dynamicimage/assets/science/psd/photojournal/pia/pia19/pia19866/PIA19866.jpg?w=2048',
 };
 
 async function textures() {

@@ -42,7 +42,7 @@ Stars to magnitude 6.8 come from the [HYG database](https://github.com/astronexu
 
 ## Textures
 
-Planet maps are from [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0). Pluto uses New Horizons' color mosaic (NASA/JHUAPL/SwRI, public domain). Most of its southern hemisphere was in seasonal darkness during the 2015 flyby and was never photographed; that part is painted a plain color (`unmapped` in `bodies.yaml`) and the card says so. No real maps exist for Ceres at this resolution or for Eris, Haumea and Makemake at all, so those use Solar System Scope's artist's impressions, set with `illustrated: true` in `bodies.yaml`, and their cards say the surface is simulated.
+Planet maps are from [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0). Pluto uses New Horizons' color mosaic (NASA/JHUAPL/SwRI, public domain). Most of its southern hemisphere was in seasonal darkness during the 2015 flyby and was never photographed; that part is painted a plain color (`unmapped` in `bodies.yaml`) and the card says so. Charon uses New Horizons' grey global map (PIA19866, public domain) the same way; the side facing away from Pluto was only seen from far off, so it's blurry. No real maps exist for Ceres at this resolution or for Eris, Haumea and Makemake at all, so those use Solar System Scope's artist's impressions, set with `illustrated: true` in `bodies.yaml`, and their cards say the surface is simulated.
 
 ## Editing the data
 
