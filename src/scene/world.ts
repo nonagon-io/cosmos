@@ -22,6 +22,7 @@ import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
 import { LocalGroup, type LocalGroupRow, M31_SYSTEM } from './localgroup';
+import { LowResPass } from './lowres';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
 import { SgrA } from './sgra';
@@ -39,6 +40,11 @@ const DEEP_IN = 6000;
 const DEEP_OUT = 4500;
 // light years from the Sun beyond which the dwarf galaxies get names
 const LOCAL_GROUP_LABELS = 500000;
+// device pixels the black hole's disk starts out allowed to trace, and the size past which frame times adjust
+// that; the layer it is drawn on when scaled down
+const HOLE_BUDGET = 300000;
+const HOLE_SLOW_AREA = 50000;
+const HOLE_LAYER = 1;
 const ARM_LABEL_R: Record<string, number> = {
   'scutum-centaurus': 5.6,
   'sagittarius-carina': 6.4,
@@ -114,6 +120,13 @@ export class World {
   private readonly stars3d: Stars3D;
   private readonly galaxy: Galaxy;
   private readonly localGroup: LocalGroup;
+  // Sgr A*'s disk is ray traced per pixel, which filling the screen can cost more than a slow GPU has. It gets a
+  // pixel budget, past which it is drawn smaller and scaled up; the budget grows while frames keep up and shrinks
+  // while they don't, so a fast GPU ends up at full resolution.
+  private readonly holePass = new LowResPass();
+  private holeScale = 1;
+  private holeBudget = HOLE_BUDGET;
+  private frameMs = 1000 / 60;
   private readonly sgr: SgrA | null = null;
   private sgrId = '';
   private readonly skyMat: ShaderMaterial;
@@ -439,7 +452,24 @@ export class World {
     if (this.sgr) {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
-      this.sgr.update(day, toCam, this.rig.pxPerAu(Math.hypot(...toCam), this.height), layers.trueSize);
+      const ppa = this.rig.pxPerAu(Math.hypot(...toCam), this.height);
+      this.sgr.update(day, toCam, ppa, layers.trueSize);
+      const side = this.sgr.quadPx(ppa) * pr;
+      const area = Math.min(side * side, this.width * this.height * pr * pr);
+      if (dt > 0) {
+        this.frameMs += (dt * 1000 - this.frameMs) * 0.1;
+      }
+      // only blame the disk for slow frames while it is big enough to be the cause
+      if (this.sgr.group.visible && area > HOLE_SLOW_AREA) {
+        if (this.frameMs > 22) {
+          this.holeBudget = Math.max(HOLE_BUDGET / 8, this.holeBudget * 0.95);
+        } else if (this.frameMs < 18) {
+          this.holeBudget = Math.min(area * 1.1, this.holeBudget * 1.02);
+        }
+      }
+      this.holeBudget = Math.max(this.holeBudget, HOLE_BUDGET / 8);
+      this.holeScale = Math.min(1, Math.sqrt(this.holeBudget / Math.max(area, 1)));
+      this.sgr.quad.layers.set(this.sgr.group.visible && this.holeScale < 0.95 ? HOLE_LAYER : 0);
     }
     // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
     this.stars3d.update(1, sunDist, camDist, 1 - 0.75 * galaxy);
@@ -452,6 +482,9 @@ export class World {
     this.renderer.render(this.sky, this.skyCamera);
     this.renderer.clearDepth();
     this.renderer.render(this.scene, cam);
+    if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
+      this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
+    }
 
     if (layers.labels) {
       this.layoutLabels(selectedId, camDist);

@@ -201,6 +201,8 @@ export class SgrA {
   readonly group = new Group();
   readonly stars = S_STARS.map((s) => s.id);
   private readonly disk: ShaderMaterial;
+  /** The billboard the disk is traced on. */
+  readonly quad: Mesh;
   private readonly orbitMat = new LineBasicMaterial({
     color: '#9d8cff',
     transparent: true,
@@ -264,9 +266,9 @@ export class SgrA {
       premultipliedAlpha: true,
     });
     const half = QUAD_RS * RS;
-    const quad = new Mesh(new PlaneGeometry(half * 2, half * 2), this.disk);
-    quad.frustumCulled = false;
-    this.group.add(quad);
+    this.quad = new Mesh(new PlaneGeometry(half * 2, half * 2), this.disk);
+    this.quad.frustumCulled = false;
+    this.group.add(this.quad);
 
     for (const s of S_STARS) {
       const n = 512;
@@ -354,6 +356,11 @@ export class SgrA {
     this.orbitMat.opacity = 0.45 * near;
     (this.points.material as PointsMaterial).opacity = near;
     this.group.visible = near > 0.001;
+  }
+
+  /** Width on screen of the quad the disk is traced on, given the scale at Sgr A*. */
+  quadPx(pxPerAu: number) {
+    return 2 * QUAD_RS * this.disk.uniforms.rs.value * pxPerAu;
   }
 
   /** Ecliptic position of star `k` in the scene, for labels. */

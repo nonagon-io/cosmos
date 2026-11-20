@@ -11,10 +11,14 @@ export interface LabelEntry {
 }
 
 const HEIGHT = 16;
+// the page's panels, which labels keep out from under
+const BLOCKERS = '.panel:not([hidden]), .brand';
 
 /** DOM labels placed in screen space, highest priority first, skipping any that would overlap. */
 export class Labels {
   private readonly els = new Map<string, HTMLButtonElement>();
+  private blockers: [number, number, number, number][] = [];
+  private blockersAt = 0;
 
   constructor(
     private readonly root: HTMLElement,
@@ -30,7 +34,16 @@ export class Labels {
 
   render(entries: LabelEntry[]) {
     entries.sort((a, b) => b.priority - a.priority);
-    const placed: [number, number, number, number][] = [];
+    // panels open, close and resize now and then; reading their boxes a few times a second is plenty
+    const now = performance.now();
+    if (now - this.blockersAt > 250) {
+      this.blockersAt = now;
+      this.blockers = [...document.querySelectorAll<HTMLElement>(BLOCKERS)]
+        .map((el) => el.getBoundingClientRect())
+        .filter((r) => r.width > 0 && r.height > 0)
+        .map((r) => [r.left, r.top, r.right, r.bottom]);
+    }
+    const placed: [number, number, number, number][] = [...this.blockers];
     const shown = new Set<string>();
     for (const e of entries) {
       const w = e.text.length * 6.6 + 8;
