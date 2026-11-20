@@ -152,20 +152,28 @@ export class Ephemeris {
     }
   }
 
-  /** Whether the body exists at `day` (spacecraft before launch don't). */
+  /** Whether the body exists at `day` (spacecraft before launch or after their end don't). */
   exists(id: string, day: number) {
-    const b = this.byId.get(id);
-    if (b?.orbit !== 'craft') {
-      return true;
-    }
-    const path = this.data.craft[id]?.path;
-    return path !== undefined && day + J2000 >= path[0][0];
+    return day >= this.firstDay(id) && day <= this.lastDay(id);
   }
 
   /** First day (since J2000) the body has a position: launch for spacecraft, -Infinity otherwise. */
   firstDay(id: string) {
+    const b = this.byId.get(id);
+    if (b?.orbit === 'leo' && b.launch) {
+      return dayOf(new Date(`${b.launch}T00:00:00Z`));
+    }
+    if (b?.orbit !== 'craft') {
+      return Number.NEGATIVE_INFINITY;
+    }
     const path = this.data.craft[id]?.path;
-    return path ? path[0][0] - J2000 : Number.NEGATIVE_INFINITY;
+    return path ? path[0][0] - J2000 : Number.POSITIVE_INFINITY;
+  }
+
+  /** Last day the body is shown: its `end`, or +Infinity. */
+  lastDay(id: string) {
+    const end = this.byId.get(id)?.end;
+    return end ? dayOf(new Date(`${end}T23:59:59Z`)) : Number.POSITIVE_INFINITY;
   }
 
   /** Position relative to the body's parent (the Sun for anything without one). */
@@ -201,6 +209,8 @@ export class Ephemeris {
         const c = this.data.craft[id];
         return c ? pathPosition(c.path, jd) : null;
       }
+      case 'leo':
+        return b.leo ? leoPosition(b.leo, jd) : null;
     }
   }
 
@@ -232,12 +242,12 @@ export class Ephemeris {
     return q ? [p[0] + q[0], p[1] + q[1], p[2] + q[2]] : null;
   }
 
-  /** Heliocentric velocity in AU/day, by central difference. */
   /** Perihelion distance in AU of a named body. */
   perihelion(id: string): number | null {
     return this.data.named[id]?.elements.q ?? null;
   }
 
+  /** Heliocentric velocity in AU/day, by central difference. */
   velocity(id: string, day: number): Vec | null {
     const dt = 1 / 24;
     const a = this.position(id, day - dt);
@@ -255,4 +265,40 @@ export class Ephemeris {
     const hours = this.byId.get(id)?.rotation ?? 0;
     return { ra: 270, dec: 66.5607, spin: hours ? (((day * 24) / hours) * 360) % 360 : 0 };
   }
+}
+
+const MU_EARTH = 398600.4418;
+const R_EARTH = 6378.137;
+const J2 = 1.08263e-3;
+const OBLIQUITY = 23.4392911 * DEG;
+
+/**
+ * A circular orbit round Earth from mean elements, with the node and the argument of latitude drifting as
+ * Earth's equatorial bulge makes them. Good for the plane and the height, not for where along the orbit the
+ * craft is: real ones are reboosted and dragged down, and every orbit's phase error adds up.
+ */
+function leoPosition(el: NonNullable<Body['leo']>, jd: number): Vec {
+  const a = R_EARTH + el.alt;
+  const n = Math.sqrt(MU_EARTH / a ** 3) * 86400;
+  const k = 0.75 * J2 * (R_EARTH / a) ** 2 * n;
+  const ci = Math.cos(el.inc * DEG);
+  const dt = jd - (Date.parse(el.epoch) / 86400000 + 2440587.5);
+  const node = el.node * DEG - 2 * k * ci * dt;
+  const u = el.u * DEG + (n + k * (3 * ci * ci - 1) + k * (5 * ci * ci - 1)) * dt;
+  const si = Math.sin(el.inc * DEG);
+  const r = a / KM_PER_AU;
+  // equatorial, then turned onto the ecliptic
+  const x = r * (Math.cos(node) * Math.cos(u) - Math.sin(node) * Math.sin(u) * ci);
+  const y = r * (Math.sin(node) * Math.cos(u) + Math.cos(node) * Math.sin(u) * ci);
+  const z = r * Math.sin(u) * si;
+  return [
+    x,
+    y * Math.cos(OBLIQUITY) + z * Math.sin(OBLIQUITY),
+    -y * Math.sin(OBLIQUITY) + z * Math.cos(OBLIQUITY),
+  ];
+}
+
+/** Period in days of a `leo` orbit. */
+export function leoPeriod(alt: number) {
+  return (2 * Math.PI * Math.sqrt((R_EARTH + alt) ** 3 / MU_EARTH)) / 86400;
 }

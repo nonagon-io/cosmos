@@ -53,6 +53,9 @@ export const th = {
 
   scale: 'ระยะซูม',
   camera: 'กล้องห่าง',
+  craftWhole: 'ทั้งลำ',
+  craftWith: (name: string) => `ยานกับ${name}`,
+  craftSun: 'ยานกับดวงอาทิตย์',
   from: (name: string) => `จาก${name}`,
 
   timeline: 'เส้นเวลา',
@@ -197,6 +200,9 @@ export const th = {
   moonsNote: 'ที่รู้จัก ณ ปี 2025',
   launched: 'ปล่อยจากโลก',
   notLaunched: 'ยังไม่ได้ปล่อย',
+  shownUntil: 'แสดงถึงวันที่',
+  altitude: 'ความสูงจากผิวโลก',
+  speedEarth: 'ความเร็วเทียบโลก',
   span: 'ระยะจากดวงอาทิตย์',
   lightTime: (s: string) => `แสงใช้เวลา ${s}`,
   retrograde: 'หมุนกลับทิศ',
@@ -240,7 +246,7 @@ export const th = {
   dataErrorHint: 'แก้ไฟล์ใน data/ แล้วหน้านี้จะโหลดใหม่เอง',
   loadError: 'โหลดข้อมูลวงโคจรไม่สำเร็จ ลองโหลดหน้าใหม่',
   credits:
-    'ข้อมูล: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG · ภาพพื้นผิว: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · กาแล็กซีแคระ: Local Volume Database (Pace 2024) · กาแล็กซีใกล้เคียง: UNGC (Karachentsev 2013), PGC (Paturel 2003) · ระยะกาแล็กซี: Cosmicflows-4 (Tully 2023), 2MRS (Huchra 2012), 6dFGS (Jones 2009), กลุ่มกาแล็กซี (Tully 2015, Tempel 2017), SDSS DR17, DESI DR1, Quaia (Storey-Fisher 2024) · CMB: Planck 2018 (ESA)',
+    'ข้อมูล: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG, CelesTrak · ภาพพื้นผิว: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · โมเดลยาน: NASA 3D Resources · กาแล็กซีแคระ: Local Volume Database (Pace 2024) · กาแล็กซีใกล้เคียง: UNGC (Karachentsev 2013), PGC (Paturel 2003) · ระยะกาแล็กซี: Cosmicflows-4 (Tully 2023), 2MRS (Huchra 2012), 6dFGS (Jones 2009), กลุ่มกาแล็กซี (Tully 2015, Tempel 2017), SDSS DR17, DESI DR1, Quaia (Storey-Fisher 2024) · CMB: Planck 2018 (ESA)',
 };
 
 export type Dict = typeof th;

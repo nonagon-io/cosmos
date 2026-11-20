@@ -497,6 +497,27 @@ async function spacecraft() {
       `  ${name}: ${path.length} points${coastFrom ? ', coasting after the Horizons data ends' : ''}`,
     );
   }
+  out.jwst = await webbPath();
+  save('spacecraft.json', out);
+}
+
+// JWST from Earth's centre, which is what its halo orbit round L2 is drawn against: fine steps through the
+// month-long cruise, then every two days. Horizons' predicted path stops in November 2031 and nothing is made up
+// past it.
+const WEBB = { id: '-170', start: '2021-12-25 13:05', cruise: '2022-02-01', end: '2031-11-08' };
+async function webbPath() {
+  const cruise = await vectors(WEBB.id, WEBB.start, WEBB.cruise, '3h', '500@399');
+  const halo = await vectors(WEBB.id, WEBB.cruise, WEBB.end, '2d', '500@399');
+  const path = [...cruise, ...halo.slice(1)];
+  console.log(`  jwst: ${path.length} points`);
+  return { path, coastFrom: null };
+}
+
+async function webb() {
+  console.log('webb');
+  const file = join(DATA, 'spacecraft.json');
+  const out = JSON.parse(readFileSync(file, 'utf8'));
+  out.jwst = await webbPath();
   save('spacecraft.json', out);
 }
 
@@ -1454,6 +1475,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   moons,
   planets,
   spacecraft,
+  webb,
   stars,
   localGroup,
   localVolume,

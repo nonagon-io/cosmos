@@ -8,6 +8,8 @@ import { AU_PER_LY } from './scene/stars';
 import type { Layers, Store } from './store';
 import { ScaleWheel } from './wheel';
 
+const EARTH_RADIUS_KM = 6378.137;
+
 export interface Actions {
   goToBody(b: Body): void;
   centerOn(b: Body): void;
@@ -197,7 +199,7 @@ export function setupUI(store: Store, act: Actions) {
     if (b.shape) {
       const d = b.shape.axes.map((a) => a * 2);
       rows.push([t.size, d[0] >= 2 ? t.dimensionsKm(d) : t.dimensionsM(d.map((x) => x * 1000))]);
-    } else if (b.radius) {
+    } else if (b.radius && b.kind !== 'spacecraft') {
       rows.push([t.radius, t.km(b.radius)]);
     }
     if (b.mass) {
@@ -292,7 +294,12 @@ export function setupUI(store: Store, act: Actions) {
     const p = act.positionOf(b.id);
     const note = body.querySelector<HTMLElement>('[data-note]');
     if (!p) {
-      live.el.innerHTML = b.launch ? `<dt>${t.launched}</dt><dd>${t.notLaunched}</dd>` : '';
+      const ended = b.end && new Date(`${b.end}T23:59:59Z`) < dateOf(store.day);
+      live.el.innerHTML = ended
+        ? `<dt>${t.shownUntil}</dt><dd>${t.date(new Date(`${b.end}T00:00:00Z`))}</dd>`
+        : b.launch
+          ? `<dt>${t.launched}</dt><dd>${t.notLaunched}</dd>`
+          : '';
       return;
     }
     const rows: string[] = [];
@@ -303,6 +310,15 @@ export function setupUI(store: Store, act: Actions) {
       );
     }
     const earth = act.positionOf('earth');
+    if (earth && b.leo) {
+      // what matters round Earth is the height and the speed over the ground below, not 30 km/s round the Sun
+      rows.push(`<dt>${t.altitude}</dt><dd>${t.km(hypot(p, earth) * KM_PER_AU - EARTH_RADIUS_KM)}</dd>`);
+      rows.push(
+        `<dt>${t.speedEarth}</dt><dd>${t.kmps(Math.sqrt(398600.4418 / (EARTH_RADIUS_KM + b.leo.alt)))}</dd>`,
+      );
+      live.el.innerHTML = rows.join('');
+      return;
+    }
     if (earth && b.id !== 'earth') {
       const r = hypot(p, earth);
       rows.push(

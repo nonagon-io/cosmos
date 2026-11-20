@@ -28,6 +28,8 @@ Everything is heliocentric, ecliptic J2000, in AU.
 - Other moons use osculating elements from Horizons, sampled about twelve times per orbit and interpolated.
 - Named asteroids, comets, dwarf planets and interstellar objects follow Horizons state vectors, sampled more finely around perihelion. Outside the span Horizons covers they fall back to a two-body orbit, and their card says so.
 - Spacecraft follow Horizons too, with 10-minute samples around each planet flyby. Those windows are taken relative to the planet, since a spacecraft's trajectory file carries the planet ephemeris of its day (Neptune in 1989 was some 5,000 km off today's). Past the end of JPL's data, which is 2050 for most of them, the fetch script carries each craft on under the Sun's gravity and the card marks it as coasting.
+- JWST is a Horizons path too, taken relative to Earth and shown until it runs out in November 2031. Its orbit line is turned with the Earth–Sun line so the halo round L2 shows as a loop rather than a smear along Earth's year.
+- The ISS and Hubble use one set of mean elements each (CelesTrak, November 2026), with the node and phase drifting as Earth's oblateness makes them. The plane and height are right; where along the orbit they are is not, since reboosts and drag push them off a few degrees within days. Their cards say this. Each is shown from launch to its planned or expected end (`end` in bodies.yaml).
 - The asteroid belt, NEOs, Jupiter trojans, centaurs, TNOs and comets are about 61,000 objects from the JPL Small-Body Database, each moved along its own Kepler orbit in the vertex shader. Their elements are fixed at one epoch, so they drift from reality over decades. That doesn't matter as a crowd, but don't read single dots as real positions. The belt cards and the layer's tooltip say this in the app too.
 
 `npm run check-ephemeris` prints the error against Horizons for a set of bodies. In 2026 everything shown is within about 1,200 km, most within a few hundred.
@@ -71,6 +73,16 @@ Up close, Sgr A* (`src/scene/sgra.ts`) is a simulated accretion disk, ray traced
 ## Textures
 
 Planet maps are from [Solar System Scope](https://www.solarsystemscope.com/textures/) (CC BY 4.0). Pluto uses New Horizons' color mosaic (NASA/JHUAPL/SwRI, public domain). Most of its southern hemisphere was in seasonal darkness during the 2015 flyby and was never photographed; that part is painted a plain color (`unmapped` in `bodies.yaml`) and the card says so. Charon uses New Horizons' grey global map (PIA19866, public domain) the same way; the side facing away from Pluto was only seen from far off, so it's blurry. No real maps exist for Ceres at this resolution or for Eris, Haumea and Makemake at all, so those use Solar System Scope's artist's impressions, set with `illustrated: true` in `bodies.yaml`, and their cards say the surface is simulated.
+
+## Spacecraft models
+
+The models are from [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources) (public domain), in `public/models`. Voyager and Pioneer are NASA's GLB files with the Draco compression and PNG fallbacks taken out, so no decoder is needed; both Pioneers share one file and both Voyagers the other. NASA only has New Horizons as 3D-printing parts, so its model is those STLs put together as the printing guide shows (dish on top, RTG out of the apex) and coloured by hand. All three are turned so the high-gain dish faces +z, in metres, and the app keeps the dish on Earth, which is how they flew between encounters. Hubble is NASA's model scaled to its real 13.2 m with the aperture on +z, the ISS is scaled up to its 109 m truss, and JWST is NASA's model simplified to a third of its triangles. Hubble points at the pole of its orbit on the side away from the Sun, where Earth never blocks the view, and JWST keeps its sunshield to the Sun, both attitudes they really take, and the ISS flies modules first with the truss to the zenith. All files are meshopt-compressed.
+
+A model loads once its craft is a pixel or two across. Out where the craft are the Sun is far too faint to show them, so the light on them is turned up.
+
+They are drawn after everything else in a scene of their own, in metres with the camera at the origin. The main scene's depth buffer is logarithmic in AU, and in 32-bit floats a craft 45 m away (3e-10 AU) gets the same depth for every part.
+
+Focused on a craft, the scale stops are its own: the whole craft (its `radius` in `bodies.yaml` is how far it reaches, booms and all), the world it is passing when one is close, the craft with the Sun, then the Solar System stops wider than that, all kept on the craft.
 
 ## Editing the data
 

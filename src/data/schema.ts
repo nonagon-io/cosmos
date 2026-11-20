@@ -11,7 +11,7 @@ export const KINDS = [
   'interstellar',
   'spacecraft',
 ] as const;
-export const ORBITS = ['engine', 'jupiter', 'moon', 'named', 'craft'] as const;
+export const ORBITS = ['engine', 'jupiter', 'moon', 'named', 'craft', 'leo'] as const;
 
 const id = z.string().regex(/^[a-z0-9-]+$/, 'id ใช้ได้เฉพาะ a-z, 0-9 และ -');
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'สีต้องเป็นรูปแบบ "#rrggbb"');
@@ -24,7 +24,10 @@ const Body = z.object({
   kind: z.enum(KINDS),
   parent: id.optional(),
   orbit: z.enum(ORBITS),
+  // for a spacecraft with a model, about how far it reaches from its middle, booms and all
   radius: z.number().positive().optional(),
+  // a 3D model in public/models, dish along +z, in metres
+  model: z.string().optional(),
   flattening: z.number().min(0).max(0.5).optional(),
   mass: z.number().positive().optional(),
   rotation: z.number().optional(),
@@ -61,6 +64,19 @@ const Body = z.object({
     .object({ inner: z.number().positive(), outer: z.number().positive(), texture: z.string() })
     .optional(),
   launch: date.optional(),
+  // the last day it is shown: deorbited, or where the trajectory data runs out
+  end: date.optional(),
+  // a near-circular orbit round its parent (Earth) from one set of elements: mean altitude in km, inclination,
+  // node and argument of latitude in degrees (equator of date) at `epoch`; drifted on by Earth's oblateness
+  leo: z
+    .object({
+      alt: z.number().positive(),
+      inc: z.number(),
+      node: z.number(),
+      u: z.number(),
+      epoch: z.string(),
+    })
+    .optional(),
   desc: z.string().optional(),
 });
 
@@ -212,6 +228,9 @@ export function buildDataset(raw: Record<string, string>): Dataset {
     }
     if (b.kind === 'moon' && !b.parent) {
       problems.push(`bodies.yaml: ${b.id}: ดวงจันทร์ต้องมี parent`);
+    }
+    if (b.orbit === 'leo' && (!b.leo || !b.launch || !b.parent)) {
+      problems.push(`bodies.yaml: ${b.id}: วงโคจร leo ต้องมี leo, launch และ parent`);
     }
     if (b.orbit === 'craft' && !b.launch) {
       problems.push(`bodies.yaml: ${b.id}: ยานอวกาศต้องมี launch`);

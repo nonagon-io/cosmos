@@ -11,7 +11,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
-import { type Ephemeris, J2000, type OrbitData } from '../astro/ephemeris';
+import { type Ephemeris, J2000, leoPeriod, type OrbitData, type Path } from '../astro/ephemeris';
 import { type PeriElements, periodDays, type Vec } from '../astro/kepler';
 import type { Body, Kind } from '../data/schema';
 import { t } from '../i18n';
@@ -20,6 +20,7 @@ import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
 import { Cmb } from './cmb';
 import { Cosmicflows, WEB_LAYER } from './cosmicflows';
+import { CraftScene, type Frame } from './craft';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
@@ -80,7 +81,9 @@ const LONG_PERIOD = 200 * 365.25;
 type OrbitKind =
   | { kind: 'loop'; period: number; samples: number; rebuild: number }
   | { kind: 'ellipse'; el: PeriElements }
-  | { kind: 'path'; span: number };
+  | { kind: 'path'; span: number }
+  // a path held in the frame that turns with the Earth–Sun line
+  | { kind: 'halo'; span: number };
 
 interface Orbit {
   line: OrbitLine;
@@ -106,6 +109,7 @@ export class World {
   // clusters and nebulae: fixed ecliptic positions in AU, and a glow for the nebulae
   // `pos` is where it is drawn; for things fixed to the Galaxy rather than near the Sun it moves with the
   // Galaxy's timeline, away from `base`, where it is now
+  private readonly crafts = new CraftScene();
   private readonly deepSky: {
     id: string;
     pos: Vec;
@@ -190,6 +194,9 @@ export class World {
       const v = new BodyVisual(b);
       this.visuals.set(b.id, v);
       this.world.add(v.group);
+      if (b.model) {
+        this.crafts.add(b.id, b.model);
+      }
       const orbit = this.makeOrbit(b);
       if (orbit) {
         this.orbits.set(b.id, orbit);
@@ -280,17 +287,32 @@ export class World {
       // stop short of the ring around a black hole
       return r?.type === 'blackhole' ? r.radius * AU_PER_LY * 1.5 : 1e-6;
     }
-    return b.kind === 'spacecraft' ? CRAFT_RADIUS_AU : (this.visuals.get(id)?.radiusAu ?? 1e-6);
+    return b.kind === 'spacecraft' && !b.model ? CRAFT_RADIUS_AU : (this.visuals.get(id)?.radiusAu ?? 1e-6);
   }
 
   private makeOrbit(b: Body): Orbit | null {
     if (b.id === 'sun') {
       return null;
     }
+    if (b.orbit === 'leo' && b.leo) {
+      const period = leoPeriod(b.leo.alt);
+      // the plane swings round by several degrees a day
+      return { line: new OrbitLine(b, false), spec: { kind: 'loop', period, samples: 256, rebuild: 0.05 } };
+    }
     if (b.orbit === 'craft') {
       const c = this.orbitData.craft[b.id];
       if (!c) {
         return null;
+      }
+      if (b.parent === 'earth') {
+        // seen from a fixed direction the loop round L2 is smeared out along Earth's year
+        const line = new OrbitLine(b, true);
+        pathLine(line, this.corotating(c.path));
+        const span = 365.25;
+        line.material.uniforms.span.value = span;
+        line.material.uniforms.future.value = 0.15;
+        line.material.uniforms.pastFloor.value = 0.22;
+        return { line, spec: { kind: 'halo', span } };
       }
       const line = new OrbitLine(b, true);
       pathLine(line, c.path);
@@ -331,6 +353,27 @@ export class World {
         rebuild: planet ? 365.25 * 20 : Math.max(30, period * 2),
       },
     };
+  }
+
+  /** Earth's longitude round the Sun at `day`, radians. */
+  private earthAngle(day: number) {
+    const e = this.eph.position('earth', day);
+    return e ? Math.atan2(e[1], e[0]) : 0;
+  }
+
+  /** A path round Earth turned into the frame where the Sun stays on the -x axis, velocities included. */
+  private corotating(path: Path): Path {
+    const w = (2 * Math.PI) / 365.256;
+    return path.map((row) => {
+      const a = -this.earthAngle(row[0] - J2000);
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const x = c * row[1] - s * row[2];
+      const y = s * row[1] + c * row[2];
+      const vx = c * row[4] - s * row[5];
+      const vy = s * row[4] + c * row[5];
+      return [row[0], x, y, row[3], vx + w * y, vy - w * x, row[6]];
+    });
   }
 
   resize(w: number, h: number) {
@@ -452,6 +495,8 @@ export class World {
     const shrink = MathUtils.smoothstep(Math.log10(Math.max(1e-9, Math.hypot(cx, cy, cz))), 2.3, 3);
 
     this.projected.clear();
+    this.crafts.begin();
+    const earth = this.positions.get('earth');
     for (const [id, vis] of this.visuals) {
       const p = this.positions.get(id);
       const shown =
@@ -482,6 +527,9 @@ export class World {
         layers.trueSize,
         vis.body.id === 'sun' ? 0 : shrink,
       );
+      if (earth && this.crafts.has(id)) {
+        this.placeCraft(vis.body, p, earth, r, [p[0] - cx, p[1] - cy, p[2] - cz], vis.radiusAu, day, time);
+      }
       // screen position, for labels and picking
       v3.set(p[0] - focus[0], p[2] - focus[2], -(p[1] - focus[1])).project(cam);
       if (v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2) {
@@ -583,6 +631,8 @@ export class World {
       this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
     }
 
+    this.crafts.render(this.renderer, cam);
+
     if (layers.labels) {
       this.layoutLabels(selectedId, camDist);
     } else {
@@ -592,6 +642,45 @@ export class World {
   }
 
   /** Drops bodies hidden behind a sphere that is big on screen, so their labels don't show through it. */
+  private placeCraft(
+    b: Body,
+    p: Vec,
+    earth: Vec,
+    px: number,
+    rel: Vec,
+    radius: number,
+    day: number,
+    time: AstroTime,
+  ) {
+    const frame: Frame = {
+      toEarth: [earth[0] - p[0], earth[1] - p[1], earth[2] - p[2]],
+      toSun: [-p[0], -p[1], -p[2]],
+    };
+    // the models are drawn over everything else, so one behind the planet it circles has to be left out here
+    const q = b.parent ? this.positions.get(b.parent) : undefined;
+    const R = b.parent ? (this.visuals.get(b.parent)?.radiusAu ?? 0) : 0;
+    if (q && R) {
+      const o: Vec = [q[0] - p[0] + rel[0], q[1] - p[1] + rel[1], q[2] - p[2] + rel[2]];
+      const len = Math.hypot(...rel);
+      const along = (o[0] * rel[0] + o[1] * rel[1] + o[2] * rel[2]) / len;
+      if (along > 0 && along < len && Math.hypot(...o) ** 2 - along ** 2 < R * R) {
+        return;
+      }
+    }
+    if (b.orbit === 'leo') {
+      // round Earth in 90 minutes, so the hour-wide difference in eph.velocity is far too coarse
+      const dt = 30 / 86400;
+      const a = this.eph.local(b.id, day - dt);
+      const c = this.eph.local(b.id, day + dt);
+      const up = this.eph.local(b.id, day, time);
+      if (a && c && up) {
+        frame.velocity = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+        frame.up = up;
+      }
+    }
+    this.crafts.place(b.id, px, rel, radius, frame);
+  }
+
   private hideOccluded() {
     const disks = [...this.projected.values()].filter((p) => p.r > 3);
     if (!disks.length) {
@@ -638,6 +727,9 @@ export class World {
       u.now.value = day;
     }
     line.line.position.set(parent[0], parent[1], parent[2]);
+    if (spec.kind === 'halo') {
+      line.line.rotation.z = this.earthAngle(day);
+    }
 
     // fade orbits that are tiny on screen, and the focused body's own orbit when the camera is right on it
     const parentDist = Math.max(1e-12, Math.hypot(parent[0] - cx, parent[1] - cy, parent[2] - cz));

@@ -1,6 +1,7 @@
 import { galaxyLook } from './scene/galaxy';
 import './styles.css';
 import { Ephemeris, type OrbitData } from './astro/ephemeris';
+import type { Vec } from './astro/kepler';
 import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
@@ -193,10 +194,10 @@ async function start() {
 
   // a camera distance that frames a body with room for its moons
   const viewDistance = (b: Body) => {
-    if (b.kind === 'spacecraft') {
-      return 0.02;
-    }
     const r = world.minDistance(b.id);
+    if (b.kind === 'spacecraft') {
+      return b.model ? r * 5 : 0.02;
+    }
     return Math.max(r * 6, b.kind === 'planet' ? r * 9 : r * 6);
   };
 
@@ -206,6 +207,23 @@ async function start() {
     const at = store.regionById.get(id)?.at;
     return at && (at.type === 'blackhole' || M31_SYSTEM.has(id)) ? eclipticDir(at.ra, at.dec) : undefined;
   };
+  // a craft seen three quarters on, from the Earth side and a little above, so the dish shows as a dish
+  const craftLook = (id: string): Vec | undefined => {
+    const p = world.positions.get(id);
+    const e = world.positions.get('earth');
+    if (!p || !e) {
+      return undefined;
+    }
+    const d = [e[0] - p[0], e[1] - p[1], e[2] - p[2]];
+    const l = Math.hypot(...d);
+    const u = d.map((x) => x / l);
+    // across the line to Earth, in the ecliptic plane
+    const s = [u[1], -u[0], 0];
+    const sl = Math.hypot(...s) || 1;
+    const v = [0, 1, 2].map((c) => -0.55 * u[c] + (0.75 * s[c]) / sl + (c === 2 ? -0.35 : 0));
+    const vl = Math.hypot(...v);
+    return [v[0] / vl, v[1] / vl, v[2] / vl];
+  };
   const actions = {
     goToBody(b: Body) {
       store.select({ kind: 'body', body: b });
@@ -213,7 +231,7 @@ async function start() {
       if (!eph.exists(b.id, store.day)) {
         store.setDay(eph.firstDay(b.id) + 2);
       }
-      rig.flyTo(b.id, viewDistance(b));
+      rig.flyTo(b.id, viewDistance(b), undefined, b.model ? craftLook(b.id) : undefined);
     },
     centerOn(b: Body) {
       if (!eph.exists(b.id, store.day)) {
@@ -277,6 +295,10 @@ async function start() {
       const f = rig.focusId;
       const rid = f.startsWith('region:') && f !== 'region:milky-way' ? f.slice(7) : '';
       const all = store.data.views;
+      const craft = store.bodyById.get(f);
+      if (craft?.kind === 'spacecraft') {
+        return [...this.craftStops(craft), ...all.filter((v) => !v.ladder)];
+      }
       const kind = !rid ? 'solar' : all.some((v) => v.ladder === rid) ? rid : 'region';
       const own = all.filter((v) => v.ladder === kind).map((v) => this.resolveView(v));
       if (kind === 'solar') {
@@ -292,12 +314,54 @@ async function start() {
       );
       return [...own, ...shared.map((v) => (v.also ? v : { ...v, focus: rid }))];
     },
+    /**
+     * A craft is metres across and AU from anything: the whole craft, then the world it is passing if one is
+     * close, then the craft with the Sun, then the Solar System's stops wider than that, all kept on the craft.
+     */
+    craftStops(b: Body): View[] {
+      const p = world.positions.get(b.id);
+      const base = { focus: b.id, ladder: 'craft' };
+      const stops: View[] = [
+        { ...base, id: 'craft', name: t.craftWhole, distance: world.minDistance(b.id) * 5 },
+      ];
+      if (!p) {
+        return stops;
+      }
+      const sun = Math.hypot(...p);
+      let near: Body | null = null;
+      let nearD = Number.POSITIVE_INFINITY;
+      // one that circles a planet is framed with it, even when the Moon happens to be nearer
+      const candidates = b.parent ? [store.bodyById.get(b.parent) as Body] : store.data.bodies;
+      for (const o of candidates) {
+        const q = o.kind === 'spacecraft' || o.id === 'sun' ? undefined : world.positions.get(o.id);
+        const d = q ? Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) : nearD;
+        if (d < nearD) {
+          near = o;
+          nearD = d;
+        }
+      }
+      // a world counts as close within a fifth of the way to the Sun, and as long as it would show as more
+      // than a dot from there
+      if (near && nearD < sun * 0.2 && world.minDistance(near.id) * 400 > nearD) {
+        stops.push({ ...base, id: 'craft-near', name: t.craftWith(near.name), distance: nearD * 2.6 });
+      }
+      const wide = sun * 2.4;
+      stops.push({ ...base, id: 'craft-sun', name: t.craftSun, distance: wide });
+      return [
+        ...stops,
+        ...store.data.views.filter((v) => v.ladder === 'solar' && !v.relative && v.distance > wide * 1.5),
+      ];
+    },
     goToView(view: View) {
       const v = this.resolveView(view);
       // the Solar System stops only set how far out: centred on a planet, a comet or anything else, stay on it
       const here = rig.focusId;
       if (v.focus === 'sun' && here !== 'sun' && store.bodyById.has(here)) {
         rig.flyTo(here, v.distance);
+        return;
+      }
+      if (v.id === 'craft') {
+        rig.flyTo(v.focus, v.distance, undefined, craftLook(v.focus));
         return;
       }
       const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
