@@ -953,6 +953,68 @@ async function redshifts() {
   console.log(`  ${out.length / 3} galaxies`);
 }
 
+// ---- 6dFGS ----
+
+// The 6dF Galaxy Survey (Jones et al. 2009): the southern sky that SDSS left out, about 125,000 redshifts out to
+// z of 0.2 or so. Only reliable redshifts (quality 3 and 4), placed like the 2MRS ones, by redshift, and left out
+// where Cosmicflows-4 or 2MRS has the galaxy already. Written in the same units as those, and drawn with them.
+const SIXDF =
+  'https://vizier.cfa.harvard.edu/viz-bin/asu-tsv?-source=VII/259/6dfgs&-out.max=200000&-out=RAJ2000%20DEJ2000%20cz%20q_cz';
+
+async function sixdf() {
+  console.log('6dfgs');
+  const drawn = new Set<string>();
+  const cell = (ra: number, dec: number) => `${Math.round(ra * 50)},${Math.round(dec * 50)}`;
+  for (const file of ['cosmicflows.bin', 'redshifts.bin']) {
+    const a = new Uint16Array(readFileSync(join(DATA, file)).buffer.slice(0));
+    for (let i = 0; i < a.length; i += 3) {
+      const ra = (a[i] / 65535) * 360;
+      const dec = (a[i + 1] / 65535) * 180 - 90;
+      // the neighbouring cells too, so a galaxy on a cell's edge still matches
+      for (const dr of [-0.02, 0, 0.02]) {
+        for (const dd of [-0.02, 0, 0.02]) {
+          drawn.add(cell(ra + dr / Math.max(0.1, Math.cos((dec * Math.PI) / 180)), dec + dd));
+        }
+      }
+    }
+  }
+  let text = '';
+  for (let k = 0; k < 4 && !text.includes('\t'); k++) {
+    text = await (await fetch(SIXDF)).text();
+  }
+  const out: number[] = [];
+  let total = 0;
+  for (const line of text.split('\n')) {
+    const [raS, decS, czS, q] = line.split('\t').map((x) => x.trim());
+    const cz = Number(czS);
+    if (!/^\d\d \d\d/.test(raS ?? '') || !(Number(q) >= 3) || !(cz > 600)) {
+      continue;
+    }
+    total++;
+    const ra = sexagesimal(raS, true);
+    const dec = sexagesimal(decS, false);
+    // to the frame of the microwave background, like the 2MRS velocities: the Sun moves 370 km/s toward
+    // RA 168, Dec -7
+    const r = Math.PI / 180;
+    const cmb =
+      cz +
+      369.8 *
+        (Math.sin(dec * r) * Math.sin(-6.9 * r) +
+          Math.cos(dec * r) * Math.cos(-6.9 * r) * Math.cos((ra - 168) * r));
+    const mpc = comoving(cmb / 299792.458);
+    if (drawn.has(cell(ra, dec)) || mpc / COSMICFLOWS_MPC > 65535) {
+      continue;
+    }
+    out.push(
+      Math.round((ra / 360) * 65535),
+      Math.round(((dec + 90) / 180) * 65535),
+      Math.round(mpc / COSMICFLOWS_MPC),
+    );
+  }
+  writeFileSync(join(DATA, 'sixdf.bin'), Buffer.from(new Uint16Array(out).buffer));
+  console.log(`  ${out.length / 3} of ${total} not drawn already`);
+}
+
 // ---- SDSS ----
 
 // Every galaxy with a good redshift in SDSS DR17, about 2.4 million out to z = 0.8, over the third of the sky
@@ -1352,6 +1414,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   localVolume,
   cosmicflows,
   redshifts,
+  sixdf,
   sdss,
   desi,
   cmb,

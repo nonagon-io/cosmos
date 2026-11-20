@@ -43,23 +43,24 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * The survey galaxies come last and in pieces: a survey's first file once the page is up, the rest only when
- * the camera heads out past `restFrom` light years, and not at all when the browser asks to save data.
+ * the camera heads out past `restFrom` light years with the survey's layer on, and not at all when the browser
+ * asks to save data.
  */
-async function streamSurvey(world: World, name: string, restFrom: number) {
+async function streamSurvey(world: World, store: Store, name: 'sdss' | 'desi', restFrom: number) {
   let manifest: SurveyManifest;
   try {
     manifest = await json<SurveyManifest>(`${name}.json`);
   } catch {
     return;
   }
-  const layer = world.addSurvey(manifest);
+  const layer = world.addSurvey(name, manifest);
   const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
   for (let k = 0; k < manifest.files; k++) {
     if (k === 1) {
       if (saveData) {
         return;
       }
-      while (!world.outPast(restFrom)) {
+      while (!world.outPast(restFrom) || !store.layers[name]) {
         await sleep(500);
       }
     }
@@ -69,6 +70,14 @@ async function streamSurvey(world: World, name: string, restFrom: number) {
     }
     layer.add(new Uint16Array(await res.arrayBuffer()));
   }
+}
+
+async function bin(name: string) {
+  const r = await fetch(`${BASE}data/${name}`);
+  if (!r.ok) {
+    throw new Error(`${name}: ${r.status}`);
+  }
+  return r.arrayBuffer();
 }
 
 async function json<T>(name: string): Promise<T> {
@@ -100,42 +109,40 @@ async function start() {
   let localVolume: LocalVolumeRow[];
   let cosmicflows: Uint16Array;
   try {
-    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData, cfData, zData] =
-      await Promise.all([
-        json<OrbitData['moons']>('moons.json'),
-        json<OrbitData['named']>('named.json'),
-        json<OrbitData['craft']>('spacecraft.json'),
-        json<OrbitData['planets']>('planets.json'),
-        json<ElementSets>('small-bodies.json'),
-        json<StarData>('stars.json'),
-        json<LocalGroupRow[]>('localgroup.json'),
-        json<LocalVolumeRow[]>('localvolume.json'),
-        fetch(`${BASE}data/field.bin`).then((r) => {
-          if (!r.ok) {
-            throw new Error(`field.bin: ${r.status}`);
-          }
-          return r.arrayBuffer();
-        }),
-        fetch(`${BASE}data/cosmicflows.bin`).then((r) => {
-          if (!r.ok) {
-            throw new Error(`cosmicflows.bin: ${r.status}`);
-          }
-          return r.arrayBuffer();
-        }),
-        fetch(`${BASE}data/redshifts.bin`).then((r) => {
-          if (!r.ok) {
-            throw new Error(`redshifts.bin: ${r.status}`);
-          }
-          return r.arrayBuffer();
-        }),
-      ]);
+    const [
+      moons,
+      named,
+      craft,
+      planets,
+      small,
+      starData,
+      lgData,
+      lvData,
+      fieldData,
+      cfData,
+      zData,
+      sixdfData,
+    ] = await Promise.all([
+      json<OrbitData['moons']>('moons.json'),
+      json<OrbitData['named']>('named.json'),
+      json<OrbitData['craft']>('spacecraft.json'),
+      json<OrbitData['planets']>('planets.json'),
+      json<ElementSets>('small-bodies.json'),
+      json<StarData>('stars.json'),
+      json<LocalGroupRow[]>('localgroup.json'),
+      json<LocalVolumeRow[]>('localvolume.json'),
+      bin('field.bin'),
+      bin('cosmicflows.bin'),
+      bin('redshifts.bin'),
+      bin('sixdf.bin'),
+    ]);
     orbitData = { moons, named, craft, planets };
     sets = small;
     stars = starData;
     localGroup = lgData;
     localVolume = lvData;
     // galaxies with measured distances, then those placed by redshift: drawn alike
-    cosmicflows = new Uint16Array([...new Uint16Array(cfData), ...new Uint16Array(zData)]);
+    cosmicflows = new Uint16Array([cfData, zData, sixdfData].flatMap((b) => [...new Uint16Array(b)]));
     field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);
@@ -164,8 +171,8 @@ async function start() {
   );
   const rig = world.rig;
   void sleep(1500).then(() => {
-    void streamSurvey(world, 'sdss', 1e8);
-    void streamSurvey(world, 'desi', 1e9);
+    void streamSurvey(world, store, 'sdss', 1e8);
+    void streamSurvey(world, store, 'desi', 1e9);
   });
   // a moon's heading is the one around its planet, not the planet's own around the Sun
   rig.velocityOf = (id) => {

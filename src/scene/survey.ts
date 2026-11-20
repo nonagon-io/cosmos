@@ -33,6 +33,7 @@ export class Survey {
 
   constructor(
     parent: Group,
+    readonly name: 'sdss' | 'desi',
     private readonly manifest: SurveyManifest,
   ) {
     this.pos = new BufferAttribute(new Float32Array(manifest.count * 3), 3);
@@ -85,9 +86,9 @@ export class Survey {
     this.group.position.set(-shift[0], -shift[1], -shift[2]);
   }
 
-  update(sunDist: number, pixelRatio: number, dt: number, frameMs: number) {
+  update(sunDist: number, pixelRatio: number, dt: number, frameMs: number, on: boolean) {
     const k = Cosmicflows.presence(sunDist);
-    this.group.visible = k > 0.01 && this.loaded > 0;
+    this.group.visible = on && k > 0.01 && this.loaded > 0;
     if (!this.group.visible) {
       return;
     }

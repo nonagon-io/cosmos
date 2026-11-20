@@ -333,10 +333,9 @@ export class World {
     this.renderer.setSize(w, h, false);
   }
 
-  /** Positions of every body at `day`, parents first. */
-  /** A survey's galaxies, which arrive after the rest. */
-  addSurvey(manifest: SurveyManifest) {
-    const s = new Survey(this.world, manifest);
+  /** A survey's galaxies, which arrive after the rest. `name` is its layer. */
+  addSurvey(name: 'sdss' | 'desi', manifest: SurveyManifest) {
+    const s = new Survey(this.world, name, manifest);
     this.surveys.push(s);
     return s;
   }
@@ -346,6 +345,7 @@ export class World {
     return Math.hypot(...this.camPos) > ly * AU_PER_LY;
   }
 
+  /** Positions of every body at `day`, parents first. */
   private computePositions(day: number, time: AstroTime) {
     this.positions.clear();
     const shift = Galaxy.sunShift(this.store.myr);
@@ -512,7 +512,7 @@ export class World {
     this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
     this.cmb.update(Math.hypot(cx, cy, cz));
     for (const s of this.surveys) {
-      s.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs);
+      s.update(Math.hypot(cx, cy, cz), pr, dt, this.frameMs, layers[s.name]);
     }
     if (this.sgr) {
       const g = this.sgr.group.position;
