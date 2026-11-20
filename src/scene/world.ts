@@ -314,7 +314,7 @@ export class World {
     const shift = Galaxy.sunShift(this.store.myr);
     const drift = this.localGroup.driftAt(this.store.myr);
     this.galaxy.setTime(this.store.myr);
-    this.localGroup.setTime(shift, drift);
+    this.localGroup.setTime(shift, drift, this.store.myr);
     for (const o of this.deepSky) {
       if (o.galactic) {
         const moves = M31_SYSTEM.has(o.id.slice(7));

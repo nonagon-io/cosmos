@@ -8,6 +8,7 @@ import {
   Points,
   ShaderMaterial,
   Vector2,
+  Vector3,
 } from 'three';
 import type { Vec } from '../astro/kepler';
 import { Cloud, COLORS, exposureFor, Galaxy } from './galaxy';
@@ -50,6 +51,8 @@ const SPIRALS: Record<
     pitch: number;
     ring: number;
     n: number;
+    /** how fast the spiral pattern turns, km/s/kpc */
+    pattern: number;
   }
 > = {
   // PA 38°, i 77° (Walterbos & Kennicutt 1987), the star-forming ring at 10 kpc
@@ -63,6 +66,9 @@ const SPIRALS: Record<
     pitch: 8,
     ring: 10,
     n: 60000,
+    // the disk turns at about 250 km/s at 10 kpc (Chemin et al. 2009); nobody has measured its pattern speed,
+    // so it is taken at the share of the orbital speed the Milky Way's has at the Sun, 0.7
+    pattern: 17.5,
   },
   // PA 23°, i 55° (McConnachie 2012; Kam et al. 2015), loose arms and almost no bulge
   triangulum: {
@@ -75,6 +81,8 @@ const SPIRALS: Record<
     pitch: 22,
     ring: 0,
     n: 25000,
+    // about 120 km/s at 8 kpc (Corbelli et al. 2014), pattern taken as for Andromeda
+    pattern: 10.5,
   },
 };
 
@@ -141,6 +149,9 @@ interface Spiral {
   group: Group;
   stars: Cloud;
   haze: Cloud;
+  /** the disk's axis, which it turns about by the right hand, and rad per million years */
+  axis: Vector3;
+  omega: number;
 }
 
 /**
@@ -284,7 +295,8 @@ export class LocalGroup {
         (hii ? 90 : 45) * ly,
         hii ? 1 : 0.85,
       );
-      if (i % 6 === 0) {
+      // every sixth pair, so both arms get their share
+      if ((i >> 1) % 6 === 0) {
         push(haze, at(r, phi, 0), COLORS.arm, 1000 * ly, 0.06);
       }
     }
@@ -306,6 +318,8 @@ export class LocalGroup {
       pos: s.pos,
       radius: s.radius,
       group,
+      axis: new Vector3(...normal),
+      omega: (spec.pattern * 1.0227) / 1000,
       stars: new Cloud(group, star.pos, star.col, star.size, 1.5, 4, 0.45),
       haze: new Cloud(group, haze.pos, haze.col, haze.size, 1.5, 120, 0.6, new Vector2(6, 24)),
     };
@@ -316,8 +330,14 @@ export class LocalGroup {
     return this.toCentre.map((x) => x * M31_SPEED * myr) as Vec;
   }
 
-  /** `shift` is the Sun's move on the Galaxy's timeline (Galaxy.sunShift), `drift` Andromeda's (driftAt). */
-  setTime(shift: Vec, drift: Vec) {
+  /**
+   * `shift` is the Sun's move on the Galaxy's timeline (Galaxy.sunShift), `drift` Andromeda's (driftAt), at
+   * `myr` million years from now; the spirals turn their patterns to match.
+   */
+  setTime(shift: Vec, drift: Vec, myr: number) {
+    for (const s of this.spirals) {
+      s.group.quaternion.setFromAxisAngle(s.axis, s.omega * myr);
+    }
     this.near.position.set(-shift[0], -shift[1], -shift[2]);
     this.m31.position.set(...([0, 1, 2].map((i) => this.m31Base[i] - shift[i] + drift[i]) as Vec));
   }
