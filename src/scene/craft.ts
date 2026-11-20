@@ -98,15 +98,16 @@ interface Tracker {
 function trackers(model: Object3D) {
   const found: Object3D[] = [];
   model.traverse((o) => {
-    if (o.userData.pivot) {
+    // not `pivot`, which three's GLTFLoader takes for a pattern of its own and strips
+    if (o.userData.hinge) {
       found.push(o);
     }
   });
   return found.map((o): Tracker => {
-    const { pivot, axis, face } = o.userData as Record<string, [number, number, number]>;
+    const { hinge, axis, face } = o.userData as Record<string, [number, number, number]>;
     // hung from a group at the pivot, so turning the group turns the part about it
     const g = new Group();
-    g.position.set(...pivot);
+    g.position.set(...hinge);
     (o.parent as Object3D).add(g);
     o.position.sub(g.position);
     g.add(o);
@@ -118,6 +119,15 @@ const s1 = new Vector3();
 const s2 = new Vector3();
 const s3 = new Vector3();
 const qi = new Quaternion();
+
+/** `toSun` in the frame of `node`, which sits somewhere inside `model`. */
+function sunIn(out: Vector3, toSun: Vec, node: Object3D, model: Object3D) {
+  qi.identity();
+  for (let n: Object3D | null = node; n && n !== model.parent; n = n.parent) {
+    qi.premultiply(n.quaternion);
+  }
+  return out.set(...toSun).applyQuaternion(qi.invert());
+}
 
 class CraftModel {
   model: Object3D | null = null;
@@ -211,10 +221,10 @@ export class CraftScene {
     o.position.set(rel[0] * M_PER_AU, rel[1] * M_PER_AU, rel[2] * M_PER_AU);
     o.quaternion.copy(orient(this.q, ATTITUDE[m.attitude](frame)));
     if (m.parts.length) {
-      // the Sun in the model's own frame, then the turn about each axis that brings the cells round to it
-      qi.copy(o.quaternion).invert();
-      s1.set(...frame.toSun).applyQuaternion(qi);
+      // outer joints come first, so each part sees the Sun in a frame its parents have already turned; the turn
+      // about its axis that brings its cells round to the Sun
       for (const t of m.parts) {
+        sunIn(s1, frame.toSun, t.pivot.parent as Object3D, o);
         s2.copy(s1).addScaledVector(t.axis, -s1.dot(t.axis));
         const angle = Math.atan2(t.axis.dot(s3.crossVectors(t.face, s2)), t.face.dot(s2));
         t.pivot.quaternion.setFromAxisAngle(t.axis, angle);
