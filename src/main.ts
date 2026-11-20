@@ -67,7 +67,7 @@ async function start() {
   let localVolume: LocalVolumeRow[];
   let cosmicflows: Uint16Array;
   try {
-    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData, cfData] =
+    const [moons, named, craft, planets, small, starData, lgData, lvData, fieldData, cfData, zData] =
       await Promise.all([
         json<OrbitData['moons']>('moons.json'),
         json<OrbitData['named']>('named.json'),
@@ -89,13 +89,20 @@ async function start() {
           }
           return r.arrayBuffer();
         }),
+        fetch(`${BASE}data/redshifts.bin`).then((r) => {
+          if (!r.ok) {
+            throw new Error(`redshifts.bin: ${r.status}`);
+          }
+          return r.arrayBuffer();
+        }),
       ]);
     orbitData = { moons, named, craft, planets };
     sets = small;
     stars = starData;
     localGroup = lgData;
     localVolume = lvData;
-    cosmicflows = new Uint16Array(cfData);
+    // galaxies with measured distances, then those placed by redshift: drawn alike
+    cosmicflows = new Uint16Array([...new Uint16Array(cfData), ...new Uint16Array(zData)]);
     field = new Float32Array(fieldData);
   } catch (e) {
     showError(t.loadError, [(e as Error).message]);

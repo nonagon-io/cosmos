@@ -909,6 +909,49 @@ async function cosmicflows() {
   console.log(`  ${out.length / 3} galaxies`);
 }
 
+// ---- 2MRS ----
+
+// The 2MASS Redshift Survey (Huchra et al. 2012) is complete over almost the whole sky to K = 11.75, where the
+// galaxies with measured distances above are patchy. Its galaxies have only a redshift, so their distance is
+// their velocity over H0 = 75, the scale Cosmicflows-4 is on. Taken as it is, a cluster's members spread along
+// our line of sight by their own orbital speeds; Tully (2015) sorted the survey into groups, and each galaxy
+// here sits at its group's mean velocity instead. Galaxies already in Cosmicflows-4 or the Local Volume are
+// left out. Same packing as cosmicflows.bin.
+const H0 = 75;
+
+async function redshifts() {
+  console.log('2mrs');
+  const measured = new Set((await vizier('J/ApJ/944/94/table2')).map((r) => r.PGC));
+  const near = (JSON.parse(readFileSync(join(DATA, 'localvolume.json'), 'utf8')) as number[][]).map(
+    ([, ra, dec]) => [ra, dec],
+  );
+  const out: number[] = [];
+  for (const r of await vizier('J/AJ/149/171/table5')) {
+    const v = Number(r['<Vcmba>'] || r.Vcmba);
+    if (measured.has(r.PGC) || !(v > 0)) {
+      continue;
+    }
+    const ra = Number(r['_RA.icrs']);
+    const dec = Number(r['_DE.icrs']);
+    const z = v / 299792.458;
+    // to first order in z for an accelerating universe (q0 = -0.55)
+    const mpc = (v / H0) * (1 - 0.225 * z);
+    const dup = near.some(
+      ([a, d]) => Math.abs(d - dec) < 0.03 && Math.abs(a - ra) * Math.cos((dec * Math.PI) / 180) < 0.03,
+    );
+    if (dup || mpc / COSMICFLOWS_MPC > 65535) {
+      continue;
+    }
+    out.push(
+      Math.round((ra / 360) * 65535),
+      Math.round(((dec + 90) / 180) * 65535),
+      Math.round(mpc / COSMICFLOWS_MPC),
+    );
+  }
+  writeFileSync(join(DATA, 'redshifts.bin'), Buffer.from(new Uint16Array(out).buffer));
+  console.log(`  ${out.length / 3} galaxies`);
+}
+
 const STEPS: Record<string, () => Promise<void>> = {
   smallBodies,
   named,
@@ -919,6 +962,7 @@ const STEPS: Record<string, () => Promise<void>> = {
   localGroup,
   localVolume,
   cosmicflows,
+  redshifts,
   textures,
 };
 const pick = process.argv.slice(2);

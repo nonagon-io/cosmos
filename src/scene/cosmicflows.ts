@@ -56,7 +56,10 @@ void main() {
 }
 `;
 
-/** Every galaxy in Cosmicflows-4 with a measured distance, as a point, out to about 2.6 billion light years. */
+/**
+ * Every galaxy in Cosmicflows-4 with a measured distance, out to about 2.6 billion light years, and the rest of
+ * the 2MASS Redshift Survey placed by redshift, each as a point.
+ */
 export class Cosmicflows {
   private readonly group = new Group();
   private readonly mat: ShaderMaterial;
