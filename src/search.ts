@@ -77,12 +77,12 @@ export function setupSearch(store: Store, choose: (h: Hit) => void) {
       return { name: esc(b.name), detail: `${t.kinds[b.kind]}${en}`, color: b.color };
     }
     if (h.kind === 'region') {
-      return { name: esc(h.item.name), detail: t.region, color: '#a99cf0' };
+      return { name: esc(h.item.name), detail: t.region, color: 'var(--label-region)' };
     }
     return {
       name: esc(h.item.title),
       detail: `${t.event} · ${t.dateShort(dateOf(store.eventDay(h.item)))}`,
-      color: '#7fd8ff',
+      color: 'var(--accent)',
     };
   };
 
