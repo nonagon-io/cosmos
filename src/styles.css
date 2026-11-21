@@ -649,6 +649,24 @@ select:focus-visible {
   padding: 12px 20px 8px;
 }
 
+.hole-clock {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(14px + var(--bottom));
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+}
+
+.hole-title {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .tl-head {
   display: flex;
   justify-content: flex-end;
@@ -754,6 +772,49 @@ select:focus-visible {
 .seg button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
+}
+
+.photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.photos figure {
+  margin: 0;
+}
+
+.photos img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.photos figcaption {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.photos figcaption em {
+  display: block;
+  font-style: normal;
+  color: var(--accent, inherit);
+}
+
+.photos figcaption small {
+  display: block;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.ir-seg {
+  display: inline-flex;
+  margin-top: 10px;
 }
 
 .ghost-btn {

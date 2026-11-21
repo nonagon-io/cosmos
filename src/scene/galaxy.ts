@@ -28,6 +28,10 @@ const LY_PER_KPC = 3261.56;
 // pattern is a wave the stars pass through and turns slower; its speed is still argued over, from about 17 to
 // 28 km/s/kpc, and 20 is taken here, which puts the Sun near corotation.
 const KMS = 1.0227;
+// the rotation curve: rising through the bulge, then near flat, so the inner disk goes round in far less time
+const circular = (r: number) => 233 * Math.min(1, r / 2.5) ** 0.5;
+/** How fast stars at radius `r` kpc go round, in radians per million years. */
+const omega = (r: number) => (circular(r) * KMS) / (Math.max(r, 0.3) * 1000);
 const SUN_OMEGA = (233 * KMS) / (R0 * 1000);
 const ARM_OMEGA = (20 * KMS) / 1000;
 // The Sun also bobs through the plane, now rising at 7.25 km/s (Schönrich 2010), about once every 70 million years
@@ -118,7 +122,11 @@ const vert = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
 attribute vec3 aColor;
 attribute float aSize;
+attribute vec3 aSpin;
 uniform float scale;
+uniform float myr;
+uniform vec3 centre;
+uniform vec3 axis;
 uniform float grow;
 uniform float pxMin;
 uniform float pxMax;
@@ -127,13 +135,25 @@ uniform vec2 shrink;
 varying vec3 vColor;
 varying float vFade;
 void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  // aSpin: how fast the star turns round the centre ahead of the model, which turns with the spiral pattern
+  // (rad per million years), how long it lives (0 for ever) and where in its life it starts. A young star
+  // born in an arm drifts off it as it goes round and dies within a few tens of millions of years
+  float age = aSpin.y > 0.0 ? mod(myr + aSpin.z * aSpin.y, aSpin.y) : myr;
+  float th = -aSpin.x * age;
+  vec3 v = position - centre;
+  vec3 p = centre + v * cos(th) + cross(axis, v) * sin(th) + axis * dot(axis, v) * (1.0 - cos(th));
+  float life = 1.0;
+  if (aSpin.y > 0.0) {
+    float u = age / aSpin.y;
+    life = 2.2 * smoothstep(0.0, 0.08, u) * (1.0 - u);
+  }
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
   // aSize is a size in AU; on screen it shrinks with distance like anything real
   float px = aSize * grow * scale / max(-mv.z, 1.0);
   gl_PointSize = clamp(px, pxMin, pxMax);
   // a point held up at the minimum size spreads the same light over more pixels
   float f = min(px / pxMin, 1.0);
-  vFade = f * f * gain;
+  vFade = f * f * gain * life;
   // close up the haze would only be a blur over the points that already show the structure
   vFade *= 1.0 - smoothstep(shrink.x, shrink.y, px);
   vColor = aColor;
@@ -177,6 +197,7 @@ export class Cloud {
     pxMax: number,
     gain: number,
     shrink = new Vector2(1e6, 2e6),
+    spin?: number[],
   ) {
     // shuffled, so any leading share of the points is a fair sample of the whole (see show)
     const n = size.length;
@@ -189,7 +210,11 @@ export class Cloud {
     const p = new Float32Array(n * 3);
     const c = new Float32Array(n * 3);
     const s = new Float32Array(n);
+    const w = new Float32Array(n * 3);
     for (const [k, i] of order.entries()) {
+      if (spin) {
+        w.set(spin.slice(i * 3, i * 3 + 3), k * 3);
+      }
       p.set(pos.slice(i * 3, i * 3 + 3), k * 3);
       c.set(col.slice(i * 3, i * 3 + 3), k * 3);
       s[k] = size[i];
@@ -199,6 +224,7 @@ export class Cloud {
     g.setAttribute('position', new BufferAttribute(p, 3));
     g.setAttribute('aColor', new BufferAttribute(c, 3));
     g.setAttribute('aSize', new BufferAttribute(s, 1));
+    g.setAttribute('aSpin', new BufferAttribute(w, 3));
     this.mat = new ShaderMaterial({
       vertexShader: vert,
       fragmentShader: frag,
@@ -210,6 +236,9 @@ export class Cloud {
         pxMax: { value: pxMax },
         gain: { value: gain },
         shrink: { value: shrink },
+        myr: { value: 0 },
+        centre: { value: new Vector3() },
+        axis: { value: new Vector3(0, 0, 1) },
       },
       transparent: true,
       depthWrite: false,
@@ -265,13 +294,15 @@ export class Galaxy {
       const u = Math.max(rand(), 1e-9);
       return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
     };
-    const star = { pos: [] as number[], col: [] as number[], size: [] as number[] };
-    const haze = { pos: [] as number[], col: [] as number[], size: [] as number[] };
+    const star = { pos: [] as number[], col: [] as number[], size: [] as number[], spin: [] as number[] };
+    const haze = { pos: [] as number[], col: [] as number[], size: [] as number[], spin: [] as number[] };
     const ly = AU_PER_LY;
-    const push = (to: typeof star, p: Vec, c: Color, size: number, k = 1) => {
+    // the bar and the arms' gas go round with their patterns, which the frame turns; stars at their own speed
+    const push = (to: typeof star, p: Vec, c: Color, size: number, k = 1, r = -1, life = 0) => {
       to.pos.push(...p);
       to.col.push(c.r * k, c.g * k, c.b * k);
       to.size.push(size);
+      to.spin.push(r < 0 ? 0 : omega(r) - ARM_OMEGA, life, rand());
     };
 
     // bar, about 4.5 kpc half length, its near end 27° toward l > 0
@@ -296,9 +327,9 @@ export class Galaxy {
       const beta = rand() * Math.PI * 2;
       const z = gauss() * 0.3;
       const p = galactic(r, beta, z);
-      push(star, p, COLORS.disk, 50 * ly, 0.4);
+      push(star, p, COLORS.disk, 50 * ly, 0.4, r);
       if (i % 5 === 0) {
-        push(haze, p, COLORS.disk, 1200 * ly, 0.035);
+        push(haze, p, COLORS.disk, 1200 * ly, 0.035, r);
       }
     }
 
@@ -322,7 +353,16 @@ export class Galaxy {
         const z = gauss() * 0.12;
         const p = galactic(r + dr, beta, z);
         const hii = rand() < 0.04;
-        push(star, p, hii ? COLORS.hii : COLORS.arm, (hii ? 90 : 45) * ly, hii ? 1 : 0.85);
+        // blue stars live a few tens of millions of years, glowing gas around new ones about ten
+        push(
+          star,
+          p,
+          hii ? COLORS.hii : COLORS.arm,
+          (hii ? 90 : 45) * ly,
+          hii ? 1 : 0.85,
+          r + dr,
+          hii ? 10 : 40,
+        );
         if (i % 6 === 0) {
           push(haze, p, COLORS.arm, 1000 * ly, 0.06);
         }
@@ -331,8 +371,8 @@ export class Galaxy {
 
     // each satellite in its own group around its centre, so it can be scaled up to stay visible
     for (const d of dwarfs) {
-      const ds = { pos: [] as number[], col: [] as number[], size: [] as number[] };
-      const dh = { pos: [] as number[], col: [] as number[], size: [] as number[] };
+      const ds = { pos: [] as number[], col: [] as number[], size: [] as number[], spin: [] as number[] };
+      const dh = { pos: [] as number[], col: [] as number[], size: [] as number[], spin: [] as number[] };
       const n = Math.round(4000 * (d.radius / (7000 * ly)));
       for (let i = 0; i < n; i++) {
         const s = d.radius * 0.45;
@@ -361,8 +401,22 @@ export class Galaxy {
     this.normal = [n[0] / nl, n[1] / nl, n[2] / nl];
     this.centre = galactic(0, 0, 0);
 
-    this.stars = new Cloud(this.frame, star.pos, star.col, star.size, 1.5, 4, 0.45);
-    this.haze = new Cloud(this.frame, haze.pos, haze.col, haze.size, 1.5, 120, 0.6, new Vector2(6, 24));
+    this.stars = new Cloud(this.frame, star.pos, star.col, star.size, 1.5, 4, 0.45, undefined, star.spin);
+    this.haze = new Cloud(
+      this.frame,
+      haze.pos,
+      haze.col,
+      haze.size,
+      1.5,
+      120,
+      0.6,
+      new Vector2(6, 24),
+      haze.spin,
+    );
+    for (const c of [this.stars, this.haze]) {
+      c.mat.uniforms.centre.value.set(...this.centre);
+      c.mat.uniforms.axis.value.set(...this.normal);
+    }
   }
 
   /**
@@ -379,6 +433,8 @@ export class Galaxy {
   setTime(myr: number) {
     this.myr = myr;
     this.shift = Galaxy.sunShift(myr);
+    this.stars.mat.uniforms.myr.value = myr;
+    this.haze.mat.uniforms.myr.value = myr;
   }
 
   private placeFrame() {
@@ -404,7 +460,9 @@ export class Galaxy {
   update(height: number, fovDeg: number, cam: Vec, trueSize: boolean, zoom: number) {
     const sunDist = Math.hypot(...cam);
     const scale = height / (2 * Math.tan(MathUtils.degToRad(fovDeg / 2)));
-    const k = Galaxy.presence(sunDist);
+    // zoomed in close on something out there, a nebula a few light years across, its stand-in stars would be
+    // big blobs drifting through the view; they are there for the shape of the Galaxy, not for close-ups
+    const k = Galaxy.presence(sunDist) * MathUtils.smoothstep(Math.log10(zoom / AU_PER_LY), 1, 2);
     const lg = Math.log10(sunDist / AU_PER_LY);
     // the glow only reads as a glow from well outside; from inside it breaks into blobs
     const h = k * MathUtils.smoothstep(lg, 3.9, 4.6);

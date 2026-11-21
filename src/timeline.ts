@@ -189,6 +189,9 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
     render();
   };
   store.on('deep', modeChanged);
+  store.on('timeline', (on: boolean) => {
+    panel.hidden = !on;
+  });
   store.on('cosmic', modeChanged);
   speeds.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-s]');

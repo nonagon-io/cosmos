@@ -109,6 +109,21 @@ const Region = z.object({
   galaxies: z.boolean().optional(),
   // drawn from the small-body catalogue, whose dots drift from their true places away from the present
   catalog: z.boolean().optional(),
+  // real pictures of it, kept in public/photos, with the credit their licence asks for
+  photos: z
+    .array(
+      z.object({
+        file: z.string(),
+        kind: z.enum(['visible', 'infrared']),
+        by: z.string(),
+        year: z.number().int(),
+        credit: z.string(),
+        url: z.string().url(),
+        // when it shows only part of the nebula, or adds other light
+        part: z.enum(['part', 'centre', 'core', 'ring', 'bar', 'cliffs', 'mexico', 'xray']).optional(),
+      }),
+    )
+    .optional(),
   desc: z.string(),
 });
 

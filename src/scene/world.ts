@@ -15,7 +15,7 @@ import { type Ephemeris, J2000, leoPeriod, type OrbitData, type Path } from '../
 import { type PeriElements, periodDays, type Vec } from '../astro/kepler';
 import type { Body, Kind } from '../data/schema';
 import { t } from '../i18n';
-import { COSMIC_AGE, type Store, scaleFactor } from '../store';
+import { COSMIC_AGE, HOLE_SPEEDS, type Store, scaleFactor } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
 import { Cmb } from './cmb';
@@ -42,6 +42,10 @@ const STAR_LABELS = 24;
 // where along each spiral arm its name goes, as a galactocentric radius in kpc
 // camera distances in light years where the timeline turns to millions of years and back, apart so it
 // doesn't flicker between the two
+// past the Oort cloud, in AU, the Solar System's timeline goes
+const SOLAR_OUT = 4e5;
+// within this many AU of Sgr A* its own clock shows
+const HOLE_CLOCK_AU = 2e5;
 const DEEP_IN = 6000;
 const DEEP_OUT = 4500;
 // and out at billions of light years from the Sun it counts billions of years of the universe's expansion
@@ -288,6 +292,42 @@ export class World {
     this.rig.zoomOnWheel(labelRoot);
   }
 
+  /** For a nebula with an infrared model: whether it is shown, after setting it if `on` is given. */
+  infrared(id: string, on?: boolean): boolean | null {
+    if (!this.nebulae.hasInfrared(id)) {
+      return null;
+    }
+    if (on !== undefined) {
+      this.nebulae.setInfrared(id, on);
+    }
+    return this.nebulae.isInfrared(id);
+  }
+
+  private inSolarSystem(focus: string): boolean {
+    const { store } = this;
+    if (store.bodyById.has(focus)) {
+      return true;
+    }
+    if (focus.startsWith('region:')) {
+      const r = store.regionById.get(focus.slice(7));
+      return !!r && !r.at && !r.stars && !r.galaxies;
+    }
+    if (focus.startsWith('view:')) {
+      const v = store.data.views.find((x) => x.id === focus.slice(5));
+      return !!v && (store.bodyById.has(v.focus) || this.inSolarSystem(`region:${v.focus}`));
+    }
+    return false;
+  }
+
+  /** Where to look from to see Sgr A*'s disk nearly edge on, if there is one. */
+  holeLook(): { look: Vec; roll: number } | undefined {
+    return this.sgr?.diskLook();
+  }
+
+  infraredFromPhoto(id: string) {
+    return this.nebulae.infraredFromPhoto(id);
+  }
+
   minDistance(id: string) {
     const b = this.store.bodyById.get(id);
     if (!b) {
@@ -474,6 +514,12 @@ export class World {
     if (store.deep ? out < DEEP_OUT : out > DEEP_IN) {
       store.setDeep(!store.deep);
     }
+    // the days only mean something in the Solar System, and the millions of years only out among the
+    // galaxies; close on a nebula or star there is nothing to run
+    const shown = store.deep || (this.inSolarSystem(this.rig.focusId) && this.rig.distance < SOLAR_OUT);
+    if (shown !== store.timeline) {
+      store.setTimeline(shown);
+    }
     const sunLy = Math.hypot(...this.camPos) / AU_PER_LY;
     if (store.deep ? (store.cosmic ? sunLy < COSMIC_OUT : sunLy > COSMIC_IN) : store.cosmic) {
       store.setCosmic(!store.cosmic);
@@ -585,7 +631,7 @@ export class World {
         (o.glow.material as SpriteMaterial).opacity = 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
       }
     }
-    this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, true);
+    this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, true, layers.trueSize);
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
@@ -598,14 +644,22 @@ export class World {
       const g = this.sgr.group.position;
       const toCam: Vec = [cx - g.x, cy - g.y, cz - g.z];
       const ppa = this.rig.pxPerAu(Math.hypot(...toCam), this.height);
-      this.sgr.update(day, toCam, ppa, layers.trueSize, layers.orbits);
+      // close in, the centre runs on its own clock, since the timeline is gone there
+      const near = Math.hypot(...toCam) < HOLE_CLOCK_AU;
+      if (near !== store.hole.shown) {
+        store.setHole({ shown: near });
+      }
+      if (store.hole.playing) {
+        store.setHole({ day: store.hole.day + HOLE_SPEEDS[store.hole.speedIndex] * dt });
+      }
+      this.sgr.update(near ? store.hole.day : day, toCam, ppa, layers.trueSize, layers.orbits, pr);
       const side = this.sgr.quadPx(ppa) * pr;
       const area = Math.min(side * side, this.width * this.height * pr * pr);
       if (dt > 0) {
         this.frameMs += (dt * 1000 - this.frameMs) * 0.1;
       }
       // only blame the disk for slow frames while it is big enough to be the cause
-      if (this.sgr.group.visible && area > HOLE_SLOW_AREA) {
+      if (this.sgr.close && area > HOLE_SLOW_AREA) {
         if (this.frameMs > 22) {
           this.holeBudget = Math.max(HOLE_BUDGET / 8, this.holeBudget * 0.95);
         } else if (this.frameMs < 18) {
@@ -614,7 +668,7 @@ export class World {
       }
       this.holeBudget = Math.max(this.holeBudget, HOLE_BUDGET / 8);
       this.holeScale = Math.min(1, Math.sqrt(this.holeBudget / Math.max(area, 1)));
-      this.sgr.quad.layers.set(this.sgr.group.visible && this.holeScale < 0.95 ? HOLE_LAYER : 0);
+      this.sgr.quad.layers.set(this.sgr.close && this.holeScale < 0.95 ? HOLE_LAYER : 0);
     }
     // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
     // the measured stars reach only a few thousand light years, so from out where the whole Galaxy shows they
@@ -865,7 +919,7 @@ export class World {
     }
 
     const galaxy = Galaxy.presence(Math.hypot(...this.camPos));
-    if (this.sgr?.group.visible) {
+    if (this.sgr?.close) {
       for (const [k, name] of this.sgr.stars.entries()) {
         const s = this.screenOf(this.sgr.positionOf(k));
         if (s) {

@@ -4,6 +4,7 @@ import { Ephemeris, type OrbitData } from './astro/ephemeris';
 import type { Vec } from './astro/kepler';
 import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
+import { setupHoleClock } from './holeclock';
 import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
@@ -202,10 +203,23 @@ async function start() {
   };
 
   // around a black hole, look the way we see it from Earth, so the S-star orbits look like the published ones;
-  // Andromeda and Triangulum too, so they look as photographed
-  const lineOfSight = (id: string) => {
+  // Andromeda, Triangulum and the nebulae too, so they look as photographed
+  const lineOfSight = (id: string, distance = Number.POSITIVE_INFINITY): [Vec | undefined, number] => {
     const at = store.regionById.get(id)?.at;
-    return at && (at.type === 'blackhole' || M31_SYSTEM.has(id)) ? eclipticDir(at.ra, at.dec) : undefined;
+    // close in on the hole itself, and on arriving there, the disk is shown nearly edge on instead, turned the
+    // way the film pictures show it; the S-star views further out keep our line of sight
+    if (at?.type === 'blackhole' && (distance < 100 || distance === store.regionById.get(id)?.view)) {
+      const h = world.holeLook();
+      if (h) {
+        return [h.look, h.roll];
+      }
+    }
+    return [
+      at && (at.type === 'blackhole' || at.type === 'nebula' || M31_SYSTEM.has(id))
+        ? eclipticDir(at.ra, at.dec)
+        : undefined,
+      0,
+    ];
   };
   // a craft seen three quarters on, from the Earth side and a little above, so the dish shows as a dish
   const craftLook = (id: string): Vec | undefined => {
@@ -247,7 +261,7 @@ async function start() {
         r.at ? `region:${r.id}` : 'sun',
         r.view,
         undefined,
-        r.at?.home ? galaxyLook(55) : lineOfSight(r.id),
+        ...(r.at?.home ? ([galaxyLook(55), 0] as [Vec, number]) : lineOfSight(r.id, r.view)),
       );
     },
     goToEvent(e: SpaceEvent) {
@@ -258,7 +272,7 @@ async function start() {
         store.regionById.has(e.focus) ? `region:${e.focus}` : e.focus,
         e.distance,
         undefined,
-        lineOfSight(e.focus),
+        ...lineOfSight(e.focus, e.distance),
       );
     },
     resolveView(v: View): View {
@@ -365,11 +379,20 @@ async function start() {
         return;
       }
       const id = v.also ? `view:${v.id}` : store.regionById.has(v.focus) ? `region:${v.focus}` : v.focus;
-      rig.flyTo(id, v.distance, undefined, v.tilt === undefined ? lineOfSight(v.focus) : galaxyLook(v.tilt));
+      rig.flyTo(
+        id,
+        v.distance,
+        undefined,
+        ...(v.tilt === undefined
+          ? lineOfSight(v.focus, v.distance)
+          : ([galaxyLook(v.tilt), 0] as [Vec, number])),
+      );
     },
     positionOf: (id: string) => world.positions.get(id) ?? null,
     velocityOf: (id: string) => eph.velocity(id, store.day),
     camera: () => ({ focus: rig.focusId, distance: rig.distance }),
+    infrared: (id: string, on?: boolean) => world.infrared(id, on),
+    infraredFromPhoto: (id: string) => world.infraredFromPhoto(id),
     canChase: () => store.bodyById.has(rig.focusId) && rig.focusId !== 'sun',
     chase(on?: boolean) {
       if (on !== undefined) {
@@ -411,6 +434,7 @@ async function start() {
 
   const ui = setupUI(store, actions);
   const timeline = setupTimeline(store, (e) => actions.goToEvent(e));
+  setupHoleClock(store);
   setupSearch(store, (h) => {
     if (h.kind === 'body') {
       actions.goToBody(h.item);
@@ -441,7 +465,11 @@ async function start() {
     }
     if (e.key === ' ') {
       e.preventDefault();
-      store.setPlaying(!store.playing);
+      if (store.hole.shown) {
+        store.setHole({ playing: !store.hole.playing });
+      } else if (store.timeline) {
+        store.setPlaying(!store.playing);
+      }
     } else if (e.key === '+' || e.key === '=') {
       rig.zoomBy(0.6);
     } else if (e.key === '-' || e.key === '_') {

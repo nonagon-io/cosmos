@@ -51,6 +51,8 @@ export const en: Dict = {
   from: (name: string) => `from ${name}`,
 
   timeline: 'Timeline',
+  holeClock: 'Time at the Galactic Centre',
+  holeSpeeds: ['Real time', '1 min/s', '1 hr/s', '1 day/s', '1 yr/s', '10 yr/s'],
   play: 'Play',
   pause: 'Pause',
   reverse: 'Reverse',
@@ -153,6 +155,31 @@ export const en: Dict = {
     'Distances can be off by about 20%, and it thins out with distance because the data is incomplete.',
   starField:
     'Every star is at its real position, from distances measured by parallax (the HYG database). But the catalogue is only complete for stars bright enough to measure from Earth, so farther out only the very bright ones are left. That makes the stars look crowded around the Sun and thinning out, which is not true; stars in this part of the galaxy are spread about evenly. Distances beyond about a thousand light years can be well off. Seen from outside the Solar System, the stars are brightened as a long exposure would, or you would hardly see any.',
+  lightKind: 'Which picture',
+  eyeLight: 'Rough colours to the eye',
+  webbLight: "Webb's infrared colours",
+  photoKind: { visible: 'Visible light', infrared: 'Infrared' },
+  photoPart: {
+    part: 'Part only',
+    centre: 'Centre only',
+    core: 'Core only',
+    ring: 'Part of the ring only',
+    bar: 'The Orion Bar only',
+    cliffs: 'The Cosmic Cliffs at the edge of NGC 3324 only',
+    mexico: 'The "Mexico" part only',
+    xray: 'With X-rays overlaid in purple',
+  },
+  photoNote:
+    'Real pictures from telescopes; tap one for the original. These are processed too: visible-light pictures often use filters for each gas, given colours of their own, and are far brighter than the eye would see.',
+  irLight: 'Infrared-style colours',
+  eyeNote:
+    'The colours of the light each gas really gives off, but far brighter than the eye would see them, like a long-exposure photograph. To the eye it would be fainter and paler.',
+  pillarsEyeNote:
+    'Our own estimate, not from a photograph: to the eye it would likely be very faint, pinkish red from hydrogen, with the pillars as dark brown shadows. The familiar 1995 Hubble picture is not true colour either; each colour stands for the light of a different gas.',
+  irNote:
+    "Worked out from the same model by the way near-infrared pictures like Webb's usually look, not copied from an infrared picture of this nebula: infrared gets through dust, so the dust that hides things turns see-through and glows gold, and gas glowing red or teal shows blue. All of these colours stand in for light the eye can't see.",
+  webbNote:
+    "After Webb's infrared picture (NIRCam), which turns infrared light the eye can't see into colours, so these are not the colours you would see. Infrared gets through dust better, so the pillars look see-through; the wavy red edges at their tips are gas struck by jets from stars still forming.",
   nebulaGlow:
     'The glow is a simple stand-in, with the color and size roughly as photographed, not the real shape of the nebula.',
   guessShape:
@@ -227,6 +254,7 @@ export const en: Dict = {
   clock: (d: Date) =>
     `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`,
   year: (y: number) => String(y),
+  yearOnly: (y: number) => `Year ${y}`,
 
   dataError: (k: number) => `${k} problem${k === 1 ? '' : 's'} in the data`,
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',

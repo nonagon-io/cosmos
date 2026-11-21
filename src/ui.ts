@@ -13,6 +13,8 @@ const EARTH_RADIUS_KM = 6378.137;
 export interface Actions {
   goToBody(b: Body): void;
   centerOn(b: Body): void;
+  infrared(id: string, on?: boolean): boolean | null;
+  infraredFromPhoto(id: string): boolean;
   canChase(): boolean;
   chase(on?: boolean): boolean;
   goToRegion(r: Region): void;
@@ -155,6 +157,12 @@ export function setupUI(store: Store, act: Actions) {
       act.centerOn(s.body);
       return;
     }
+    const ir = (e.target as HTMLElement).closest<HTMLElement>('[data-ir]');
+    if (ir && s?.kind === 'region') {
+      act.infrared(s.region.id, ir.dataset.ir === '1');
+      renderSelection();
+      return;
+    }
     const go = (e.target as HTMLElement).closest<HTMLElement>('[data-go]');
     if (!go || !s) {
       return;
@@ -269,8 +277,41 @@ export function setupUI(store: Store, act: Actions) {
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}
+      ${irRow(r)}
+      ${photoRow(r)}
       <p>${esc(r.desc)}</p>
       <div class="go-row"><button type="button" class="go" data-go>${t.goTo}</button></div>`;
+  };
+
+  const photoRow = (r: Region) => {
+    if (!r.photos?.length) {
+      return '';
+    }
+    const items = r.photos
+      .map(
+        (p) => `
+        <figure>
+          <a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${import.meta.env.BASE_URL}photos/${esc(p.file)}" alt="${esc(`${r.name}, ${p.by} ${p.year}`)}" loading="lazy"></a>
+          <figcaption>${esc(t.photoKind[p.kind])} · ${esc(p.by)} ${p.year}${p.part ? `<em>${esc(t.photoPart[p.part])}</em>` : ''}<small>${esc(p.credit)}</small></figcaption>
+        </figure>`,
+      )
+      .join('');
+    return `<div class="photos">${items}</div><p class="note">${esc(t.photoNote)}</p>`;
+  };
+
+  const irRow = (r: Region) => {
+    const ir = act.infrared(r.id);
+    if (ir === null) {
+      return '';
+    }
+    const photo = act.infraredFromPhoto(r.id);
+    const note = ir ? (photo ? t.webbNote : t.irNote) : photo ? t.pillarsEyeNote : t.eyeNote;
+    return `
+      <div class="seg ir-seg" role="group" aria-label="${esc(t.lightKind)}">
+        <button type="button" data-ir="0" aria-pressed="${!ir}">${t.eyeLight}</button>
+        <button type="button" data-ir="1" aria-pressed="${ir}">${photo ? t.webbLight : t.irLight}</button>
+      </div>
+      <p class="note">${esc(note)}</p>`;
   };
 
   const eventCard = (e: SpaceEvent) => {
@@ -370,9 +411,12 @@ export function setupUI(store: Store, act: Actions) {
 
   // panels above the timeline sit on its real height, which changes with wrapping
   const tl = document.querySelector<HTMLElement>('.timeline') as HTMLElement;
-  new ResizeObserver(() =>
-    document.documentElement.style.setProperty('--tl-h', `${tl.offsetHeight}px`),
-  ).observe(tl);
+  const hc = document.getElementById('hole-clock') as HTMLElement;
+  const bar = new ResizeObserver(() =>
+    document.documentElement.style.setProperty('--tl-h', `${Math.max(tl.offsetHeight, hc.offsetHeight)}px`),
+  );
+  bar.observe(tl);
+  bar.observe(hc);
 
   let acc = 0;
   return {

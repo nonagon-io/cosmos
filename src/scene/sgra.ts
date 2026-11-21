@@ -1,4 +1,5 @@
 import {
+  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -16,6 +17,7 @@ import {
 } from 'three';
 import { orient, solveKepler, type Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
+import { rng } from './particles';
 import { dot } from './textures';
 
 // Orbits of the S-stars as astronomers see them on the sky: a (arcsec), e, i, Ω, ω (degrees), time of
@@ -193,6 +195,64 @@ void main() {
 }
 `;
 
+// The stars round it, drawn on circular orbits at the speed its mass gives them
+const clusterVert = /* glsl */ `
+${LOGDEPTH_VERT_PARS}
+attribute vec3 aAxis;
+attribute float aOmega;
+attribute vec3 aColor;
+attribute float aSize;
+attribute float aFar;
+attribute float aPick;
+uniform float ppa;
+uniform float year;
+uniform float dist;
+uniform vec2 full;
+uniform float boost;
+uniform float pr;
+varying vec3 vColor;
+void main() {
+  float th = aOmega * year;
+  vec3 v = position;
+  vec3 p = v * cos(th) + cross(aAxis, v) * sin(th) + aAxis * dot(aAxis, v) * (1.0 - cos(th));
+  // the stars crowd toward the middle as r^-2, so on screen the middle piles thousands onto each pixel; past
+  // about one a pixel, keep only a share there, brighter
+  float rpx = length(position) * ppa;
+  float keep = clamp(rpx * rpx / 3000.0, 0.002, 1.0);
+  if (aPick > keep) {
+    gl_PointSize = 0.0;
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
+  gl_PointSize = aSize * pr;
+  // from further than 'full' away the stars crowd closer on screen as 1/d^2, so each is dimmed as much: the cluster
+  // and the bulge keep the same surface brightness as the camera comes in, a bright speck growing until it
+  // breaks up into stars, as a real one would
+  float f = mix(full.x, full.y, aFar) / dist;
+  vColor = aColor * min(1.0, f * f) * boost / keep;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  ${LOGDEPTH_VERT}
+}
+`;
+const clusterFrag = /* glsl */ `
+${LOGDEPTH_FRAG_PARS}
+varying vec3 vColor;
+void main() {
+  ${LOGDEPTH_FRAG}
+  float d = length(gl_PointCoord - 0.5) * 2.0;
+  gl_FragColor = vec4(vColor, 1.0 - smoothstep(0.35, 1.0, d));
+  #include <colorspace_fragment>
+}
+`;
+
+// 4.3 million suns: a circular orbit of `a` AU takes sqrt(a³ / M) years
+const M_SUNS = 4.3e6;
+const AU_PER_PC = 206265;
+const BULGE_AU = 1500 * AU_PER_PC;
+// how near, in AU, the cluster's and the bulge's stars are drawn at full brightness (see clusterVert)
+const FULL_CLUSTER = 2500 * 63241;
+const FULL_BULGE = 2500 * 63241;
+
 /**
  * Sgr A* up close: a simulated accretion disk around a shadow of the real size, traced with gravitational
  * lensing, and the S-stars on their measured orbits. Everything sits in a group at Sgr A*'s position, so the
@@ -211,6 +271,10 @@ export class SgrA {
     depthWrite: false,
   });
   private readonly points: Points;
+  private readonly cluster: Points;
+  private clusterCount = 0;
+  /** Close enough for the disk, the S-stars and their orbits to show. */
+  close = false;
   private readonly starPos: Float32Array;
   // unit vectors of the sky at Sgr A* in ecliptic coordinates: north, east, and away from us
   private readonly axes: [Vec, Vec, Vec];
@@ -305,6 +369,156 @@ export class SgrA {
     );
     this.points.frustumCulled = false;
     this.group.add(this.points);
+    this.cluster = this.makeCluster();
+    this.group.add(this.cluster);
+  }
+
+  /**
+   * The nuclear star cluster, as a model: a few tens of thousands of its brightest stars, mostly old red giants,
+   * thicker toward the middle as measured (density falling as r^-1.5), on circular orbits tilted every way. The
+   * young blue stars between 0.04 and 0.5 pc share one disk turning clockwise on our sky, tilted as measured
+   * (i 130°, Ω 96°; Yelda 2014). No one star here is in its real place, unlike the S-stars.
+   */
+  private makeCluster() {
+    const rand = rng(4300000);
+    const pos: number[] = [];
+    const axis: number[] = [];
+    const omega: number[] = [];
+    const col: number[] = [];
+    const size: number[] = [];
+    const [an, ae, az] = this.axes;
+    const sky = (v: Vec): Vec => [0, 1, 2].map((c) => v[0] * an[c] + v[1] * ae[c] + v[2] * az[c]) as Vec;
+    const far: number[] = [];
+    const add = (p: Vec, ax: Vec, c: Color, s: number, bulge = 0) => {
+      const r = Math.hypot(...p);
+      pos.push(...p);
+      axis.push(...ax);
+      // the bulge's stars take hundreds of thousands of years or more to go round: still, at any speed here
+      omega.push(bulge ? 0 : (2 * Math.PI) / Math.sqrt(r ** 3 / M_SUNS));
+      col.push(c.r, c.g, c.b);
+      size.push(s);
+      far.push(bulge);
+    };
+    const unit = (): Vec => {
+      const z = rand() * 2 - 1;
+      const a = rand() * 2 * Math.PI;
+      const k = Math.sqrt(1 - z * z);
+      return [k * Math.cos(a), k * Math.sin(a), z];
+    };
+    const cross = (a: Vec, b: Vec): Vec => {
+      const c: Vec = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      const l = Math.hypot(...c);
+      return [c[0] / l, c[1] / l, c[2] / l];
+    };
+    const giant = new Color('#ffb27a');
+    const yellow = new Color('#fff0d8');
+    const blue = new Color('#a9c6ff');
+    const rMax = 2 * AU_PER_PC;
+    for (let n = 0; n < 30000; ) {
+      const r = rMax * rand() ** (2 / 3);
+      if (r < 1500) {
+        continue;
+      }
+      n++;
+      const d = unit();
+      const bright = rand() < 0.04;
+      add(
+        [d[0] * r, d[1] * r, d[2] * r],
+        cross(d, unit()),
+        (rand() < 0.85 ? giant : yellow).clone().multiplyScalar(bright ? 1 : 0.45 + rand() * 0.35),
+        bright ? 3 : 1.6,
+      );
+    }
+    // and on out through the bulge to about 1.5 kpc, as one population thinning as r^-2, so it shows no edge:
+    // the Galaxy model has too few points to fill the sky from in here. Flattened to the Galactic plane about
+    // 2:1 beyond the cluster, old orange and yellow stars
+    const ra = 192.8595 * MathUtils.DEG2RAD;
+    const de = 27.1283 * MathUtils.DEG2RAD;
+    const eq = [Math.cos(de) * Math.cos(ra), Math.cos(de) * Math.sin(ra), Math.sin(de)];
+    const pole: Vec = [
+      eq[0],
+      eq[1] * Math.cos(OBLIQUITY) + eq[2] * Math.sin(OBLIQUITY),
+      -eq[1] * Math.sin(OBLIQUITY) + eq[2] * Math.cos(OBLIQUITY),
+    ];
+    for (let i = 0; i < 130000; i++) {
+      const r = 2 * AU_PER_PC * (1500 / 2) ** rand();
+      const d = unit();
+      const h = d[0] * pole[0] + d[1] * pole[1] + d[2] * pole[2];
+      const flat = 0.5 * MathUtils.smoothstep(r, 20 * AU_PER_PC, 200 * AU_PER_PC);
+      const p: Vec = [0, 1, 2].map((c) => (d[c] - flat * h * pole[c]) * r) as Vec;
+      const inner = r < 60 * AU_PER_PC;
+      add(
+        p,
+        inner ? cross(d, unit()) : pole,
+        (rand() < 0.75 ? giant : yellow).clone().multiplyScalar(0.3 + rand() * 0.45),
+        rand() < 0.03 ? 2.6 : 1.5,
+        inner ? 0 : 1,
+      );
+    }
+    // the disk's plane on the sky, from two directions in it
+    const u = sky(orient(1, 0, 130 * MathUtils.DEG2RAD, 96 * MathUtils.DEG2RAD, 0));
+    const w = sky(orient(0, 1, 130 * MathUtils.DEG2RAD, 96 * MathUtils.DEG2RAD, 0));
+    const normal = cross(u, w);
+    for (let i = 0; i < 120; i++) {
+      const r = 0.04 * AU_PER_PC * (0.5 / 0.04) ** rand();
+      const a = rand() * 2 * Math.PI;
+      const h = (rand() - 0.5) * 0.15 * r;
+      const p: Vec = [0, 1, 2].map(
+        (c) => r * (Math.cos(a) * u[c] + Math.sin(a) * w[c]) + h * normal[c],
+      ) as Vec;
+      add(p, normal, blue, 3.5);
+    }
+    // shuffled, so any leading share of the stars is a fair sample of all of them (see update)
+    const n = size.length;
+    const order = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const pick = (a: number[], k: number) => {
+      const out = new Float32Array(n * k);
+      for (const [to, from] of order.entries()) {
+        for (let c = 0; c < k; c++) {
+          out[to * k + c] = a[from * k + c];
+        }
+      }
+      return out;
+    };
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(pick(pos, 3), 3));
+    g.setAttribute('aAxis', new BufferAttribute(pick(axis, 3), 3));
+    g.setAttribute('aOmega', new BufferAttribute(pick(omega, 1), 1));
+    g.setAttribute('aColor', new BufferAttribute(pick(col, 3), 3));
+    g.setAttribute('aSize', new BufferAttribute(pick(size, 1), 1));
+    g.setAttribute('aFar', new BufferAttribute(pick(far, 1), 1));
+    g.setAttribute(
+      'aPick',
+      new BufferAttribute(
+        Float32Array.from({ length: n }, () => rand()),
+        1,
+      ),
+    );
+    this.clusterCount = n;
+    const pts = new Points(
+      g,
+      new ShaderMaterial({
+        vertexShader: clusterVert,
+        fragmentShader: clusterFrag,
+        uniforms: {
+          year: { value: 0 },
+          dist: { value: 1 },
+          boost: { value: 1 },
+          ppa: { value: 1 },
+          full: { value: new Vector2(FULL_CLUSTER, FULL_BULGE) },
+          pr: { value: 1 },
+        },
+        transparent: true,
+        depthWrite: false,
+        blending: AdditiveBlending,
+      }),
+    );
+    pts.frustumCulled = false;
+    return pts;
   }
 
   /** A point on star `s`'s orbit at eccentric anomaly `ea`, relative to Sgr A* in ecliptic AU. */
@@ -329,7 +543,7 @@ export class SgrA {
    * Moves the stars to `day` and fades things by where the camera is: `toCam` runs from Sgr A* to the camera
    * in ecliptic AU.
    */
-  update(day: number, toCam: Vec, pxPerAu: number, trueSize: boolean, orbits: boolean) {
+  update(day: number, toCam: Vec, pxPerAu: number, trueSize: boolean, orbits: boolean, pr = 1) {
     const camDist = Math.hypot(...toCam);
     // grow the hole, rays and all, so it stays visible from far off unless true size is on
     const px = 5.2 * RS * pxPerAu;
@@ -360,12 +574,79 @@ export class SgrA {
     const lg = Math.log10(camDist);
     // the orbits span a few thousand AU; far out they would only be a speck over the Galaxy model
     const near = 1 - MathUtils.smoothstep(lg, 4.6, 5.4);
+    this.close = near > 0.001;
     this.orbitMat.opacity = 0.45 * near;
     for (const l of this.loops) {
-      l.visible = orbits;
+      l.visible = orbits && this.close;
     }
     (this.points.material as PointsMaterial).opacity = near;
-    this.group.visible = near > 0.001;
+    this.points.visible = this.close;
+    this.quad.visible = this.close;
+    const cu = (this.cluster.material as ShaderMaterial).uniforms;
+    cu.year.value = day / 365.25;
+    cu.dist.value = camDist;
+    cu.pr.value = pr;
+    // once the whole bulge is under a pixel the Galaxy model's own is all there is to see. Smaller than the
+    // screen, it needs only so many stars, drawn brighter: all of them piled onto a few pixels stall the GPU
+    const across = 2 * BULGE_AU * pxPerAu * pr;
+    this.group.visible = across > 1;
+    const k = Math.max(1, Math.min(this.clusterCount, Math.ceil(across * across * 0.3)));
+    this.cluster.geometry.setDrawRange(0, k);
+    cu.boost.value = this.clusterCount / k;
+    cu.ppa.value = pxPerAu * pr;
+  }
+
+  /**
+   * The way to look at the hole to see its disk nearly edge on, as in the film pictures: the camera a little
+   * above the plane, the disk rising to the right on screen, and the gas coming toward us, which is brightest,
+   * on the right. Returns the look direction and the turn of the picture about it that does that.
+   */
+  diskLook(): { look: Vec; roll: number } {
+    const n = this.disk.uniforms.diskN.value as Vec;
+    const cross = (x: Vec, y: Vec): Vec => [
+      x[1] * y[2] - x[2] * y[1],
+      x[2] * y[0] - x[0] * y[2],
+      x[0] * y[1] - x[1] * y[0],
+    ];
+    const norm = (v: Vec): Vec => {
+      const l = Math.hypot(...v);
+      return [v[0] / l, v[1] / l, v[2] / l];
+    };
+    const dotp = (x: Vec, y: Vec) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+    const p = norm(cross(n, Math.abs(n[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0]));
+    const q = cross(n, p);
+    const up = 9 * MathUtils.DEG2RAD;
+    const want = -24 * MathUtils.DEG2RAD;
+    let best = { look: [-n[0], -n[1], -n[2]] as Vec, roll: 0 };
+    let cost = Number.POSITIVE_INFINITY;
+    // which side of the disk the camera is on decides which way the gas goes round as seen; only one side puts
+    // the gas coming toward us on the right
+    for (const side of [1, -1]) {
+      const m: Vec = [n[0] * side, n[1] * side, n[2] * side];
+      for (let deg = 0; deg < 360; deg += 2) {
+        const f = deg * MathUtils.DEG2RAD;
+        const c = [0, 1, 2].map(
+          (k) => Math.cos(up) * (Math.cos(f) * p[k] + Math.sin(f) * q[k]) + Math.sin(up) * m[k],
+        ) as Vec;
+        const look: Vec = [-c[0], -c[1], -c[2]];
+        const right = norm(cross(look, [0, 0, 1]));
+        const screenUp = cross(right, look);
+        // the axis on the camera's side, on screen, as an angle from up toward right; a turn of the camera by
+        // `roll` adds to it
+        const tilt = Math.atan2(dotp(m, right), dotp(m, screenUp));
+        const roll = Math.atan2(Math.sin(want - tilt), Math.cos(want - tilt));
+        const r2 = [0, 1, 2].map((k) => right[k] * Math.cos(roll) + screenUp[k] * Math.sin(roll)) as Vec;
+        // gas on the right of the hole moves along n × right; toward the camera is along c
+        const toward = dotp(cross(n, r2), c) > 0;
+        // as level a camera as can be, so dragging round from there feels natural
+        const k = Math.abs(look[2]) + Math.abs(roll) * 0.3 + (toward ? 0 : 10);
+        if (k < cost) {
+          cost = k;
+          best = { look, roll };
+        }
+      }
+    }
+    return best;
   }
 
   /** Width on screen of the quad the disk is traced on, given the scale at Sgr A*. */

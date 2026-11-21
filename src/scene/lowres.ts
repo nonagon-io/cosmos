@@ -2,10 +2,12 @@ import {
   AdditiveBlending,
   type Camera,
   Color,
+  CustomBlending,
   HalfFloatType,
   Mesh,
   MeshBasicMaterial,
-  NormalBlending,
+  OneFactor,
+  OneMinusSrcAlphaFactor,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
@@ -56,14 +58,18 @@ export class LowResPass {
       this.overlay.add(new Mesh(new PlaneGeometry(2, 2), mat));
       return;
     }
-    // the target holds premultiplied colour, as the disk shader writes it
+    // the disk shader writes colour that is not to be multiplied by alpha again, blended One/OneMinusSrcAlpha,
+    // and so must laying the target over the frame be. MeshBasicMaterial's premultipliedAlpha multiplies the
+    // colour by alpha once more, which left the faint outer gas far darker here than drawn straight to the
+    // screen, so the disk flickered whenever slow frames switched it over to this pass
     const mat = new MeshBasicMaterial({
       map: this.target.texture,
       transparent: true,
       depthTest: false,
       depthWrite: false,
-      blending: NormalBlending,
-      premultipliedAlpha: true,
+      blending: CustomBlending,
+      blendSrc: OneFactor,
+      blendDst: OneMinusSrcAlphaFactor,
     });
     this.overlay.add(new Mesh(new PlaneGeometry(2, 2), mat));
   }

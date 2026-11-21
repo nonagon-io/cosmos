@@ -26,12 +26,25 @@ interface Events {
   select: Selection;
   layers: Layers;
   deep: boolean;
+  timeline: boolean;
+  hole: HoleClock;
   myr: number;
   cosmic: boolean;
   gyr: number;
 }
 
 type Handler<T> = (v: T) => void;
+
+/** The clock of the Galaxy's centre, run on its own while the camera is there, where the timeline is not. */
+export interface HoleClock {
+  shown: boolean;
+  day: number;
+  playing: boolean;
+  speedIndex: number;
+}
+
+/** Days per second for that clock: real time, a minute, an hour, a day, a year and ten years a second. */
+export const HOLE_SPEEDS = [1 / 86400, 1 / 1440, 1 / 24, 1, 365.25, 3652.5] as const;
 
 /** Days per second of playback. */
 export const SPEEDS = [1 / 86400, 15 / 1440, 30 / 1440, 1 / 24, 1, 7, 30.44, 365.25, 3652.5] as const;
@@ -109,6 +122,9 @@ export class Store {
   /** Billions of years from now on that timeline, never ahead of now. */
   gyr = 0;
   cosmicSpeedIndex = 1;
+  /** Whether time means anything for what the camera is on: the Solar System, or the Galaxy and beyond. */
+  timeline = true;
+  hole: HoleClock = { shown: false, day: 0, playing: false, speedIndex: 1 };
   stopAtEvents = false;
   selection: Selection = null;
   layers: Layers = {
@@ -174,6 +190,31 @@ export class Store {
     this.deep = on;
     this.emit('deep', on);
     this.emit('speed', this.modeSpeed);
+  }
+
+  setTimeline(on: boolean) {
+    this.timeline = on;
+    // a timeline running when it goes away would carry on unseen
+    if (!on && this.playing) {
+      this.setPlaying(false);
+    }
+    this.emit('timeline', on);
+  }
+
+  /** Updates the centre's clock; it starts from the Solar System's date each time it comes up. */
+  setHole(h: Partial<HoleClock>) {
+    const next = { ...this.hole, ...h };
+    // it starts from the Solar System's date and runs at once, at a minute a second, where the disk visibly turns
+    if (h.shown && !this.hole.shown) {
+      next.day = this.day;
+      next.playing = true;
+      next.speedIndex = 1;
+    }
+    if (!next.shown) {
+      next.playing = false;
+    }
+    this.hole = next;
+    this.emit('hole', next);
   }
 
   setCosmic(on: boolean) {

@@ -19,6 +19,9 @@ interface Flight {
   done?: () => void;
   // the look direction to end on, if not straight at the target
   end?: Vec;
+  // the turn about the look direction to end on, and to start from
+  roll: number;
+  roll0: number;
 }
 
 // share of the flight spent turning to face the target, and when the move toward it starts
@@ -71,6 +74,8 @@ export class CameraRig {
   readonly focusPos: Vec = [0, 0, 0];
   private targetDistance: number;
   private yawVel = 0;
+  /** Turn of the picture about the look direction, radians; ecliptic north is up at 0. */
+  private roll = 0;
   private pitchVel = 0;
   private flight: Flight | null = null;
   private readonly pointers = new Map<number, { x: number; y: number }>();
@@ -114,7 +119,7 @@ export class CameraRig {
    * Flies to `id` and settles at `distance` AU from it: the camera first turns where it stands until the
    * target is dead ahead, then moves straight in.
    */
-  flyTo(id: string, distance: number, done?: () => void, end?: Vec) {
+  flyTo(id: string, distance: number, done?: () => void, end?: Vec, roll = 0) {
     const fromId = this.focusId;
     const start: Vec = [...this.focusPos];
     // follow wherever the old focus moves to during the flight
@@ -142,6 +147,8 @@ export class CameraRig {
       duration: MathUtils.clamp(1.1 + span * 0.42 + turn * 0.35 + (end ? 1 : 0), 1.1, 6.5),
       done,
       end,
+      roll,
+      roll0: this.roll,
     };
     this.focusId = id;
     this.targetDistance = d1;
@@ -193,6 +200,7 @@ export class CameraRig {
     if (f) {
       f.t += dt / f.duration;
       const t = Math.min(1, f.t);
+      this.roll = MathUtils.lerp(f.roll0, f.roll, easeInOut(t));
       const turn = easeInOut(Math.min(1, t / TURN_END));
       const move = easeInOut(MathUtils.clamp((t - MOVE_START) / (1 - MOVE_START), 0, 1));
       const a = f.from();
@@ -266,6 +274,9 @@ export class CameraRig {
     cam.position.set(sx, sy, sz);
     cam.up.set(0, 1, 0);
     cam.lookAt(0, 0, 0);
+    if (this.roll !== 0) {
+      cam.rotateZ(this.roll);
+    }
     cam.updateMatrixWorld();
     return [sx, -sz, sy];
   }
@@ -357,11 +368,16 @@ export class CameraRig {
         return;
       }
       if (this.moved) {
-        this.rotateBy(-dx * ROTATE_PER_PX, dy * ROTATE_PER_PX);
+        // a drag goes the way it looks on screen, also when the picture is turned
+        const c = Math.cos(this.roll);
+        const s = Math.sin(this.roll);
+        const ux = dx * c + dy * s;
+        const uy = dy * c - dx * s;
+        this.rotateBy(-ux * ROTATE_PER_PX, uy * ROTATE_PER_PX);
         // carry the last movement as momentum after release
         const dt = MathUtils.clamp((e.timeStamp - last) / 1000, 1 / 240, 0.1);
-        this.yawVel = (-dx * ROTATE_PER_PX) / dt / 4;
-        this.pitchVel = (dy * ROTATE_PER_PX) / dt / 4;
+        this.yawVel = (-ux * ROTATE_PER_PX) / dt / 4;
+        this.pitchVel = (uy * ROTATE_PER_PX) / dt / 4;
         this.onUserMove();
       }
     });
