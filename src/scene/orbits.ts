@@ -10,6 +10,7 @@ import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } 
 const vert = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
 attribute float aT;
+attribute float aS;
 uniform bool timeMode;
 uniform float head;
 uniform float now;
@@ -17,7 +18,11 @@ uniform float span;
 uniform float future;
 uniform float pastFloor;
 varying float vA;
+varying float vS;
+varying float vT;
 void main() {
+  vS = aS;
+  vT = aT;
   if (timeMode) {
     float dt = aT - now;
     float past = 1.0 - clamp(-dt / span, 0.0, 1.0);
@@ -35,9 +40,14 @@ const frag = /* glsl */ `
 ${LOGDEPTH_FRAG_PARS}
 uniform vec3 color;
 uniform float opacity;
+uniform float dashUntil;
+uniform float dash;
 varying float vA;
+varying float vS;
+varying float vT;
 void main() {
   ${LOGDEPTH_FRAG}
+  if (vT < dashUntil && fract(vS / dash) > 0.5) discard;
   gl_FragColor = vec4(color, vA * opacity);
   #include <colorspace_fragment>
 }
@@ -68,6 +78,9 @@ export class OrbitLine {
         future: { value: 0.22 },
         // lowest alpha for the past: older laps of a periodic orbit vanish, a spacecraft keeps its whole path
         pastFloor: { value: 0 },
+        // before this date (days since J2000) the path is dashed, every `dash` AU along it
+        dashUntil: { value: -1e9 },
+        dash: { value: 1 },
       },
       transparent: true,
       depthWrite: false,
@@ -79,12 +92,19 @@ export class OrbitLine {
 
   setPoints(points: Vec[], t: Float32Array) {
     const pos = new Float32Array(points.length * 3);
+    const along = new Float32Array(points.length);
     for (let i = 0; i < points.length; i++) {
       pos.set(points[i], i * 3);
+      if (i > 0) {
+        const a = points[i - 1];
+        const b = points[i];
+        along[i] = along[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      }
     }
     const g = this.line.geometry;
     g.setAttribute('position', new BufferAttribute(pos, 3));
     g.setAttribute('aT', new BufferAttribute(t, 1));
+    g.setAttribute('aS', new BufferAttribute(along, 1));
     g.computeBoundingSphere();
   }
 }

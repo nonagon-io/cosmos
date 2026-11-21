@@ -1,6 +1,6 @@
 import { AdditiveBlending, BufferAttribute, BufferGeometry, Group, Points, ShaderMaterial } from 'three';
 import type { Vec } from '../astro/kepler';
-import { Cosmicflows, POINT_FRAG, POINT_VERT, WEB_LAYER } from './cosmicflows';
+import { Cosmicflows, POINT_FRAG, POINT_VERT, SEEN, WEB_LAYER } from './cosmicflows';
 import { AU_PER_LY, eclipticDir } from './stars';
 
 const AU_PER_MPC = 3.26156e6 * AU_PER_LY;
@@ -45,7 +45,12 @@ export class Survey {
     this.mat = new ShaderMaterial({
       vertexShader: POINT_VERT,
       fragmentShader: POINT_FRAG,
-      uniforms: { size: { value: 2 }, opacity: { value: 0 } },
+      uniforms: {
+        size: { value: 2 },
+        opacity: { value: 0 },
+        zoom: SEEN.zoom,
+        reach: SEEN.reach,
+      },
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,

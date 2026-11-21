@@ -13,6 +13,8 @@ const EARTH_RADIUS_KM = 6378.137;
 export interface Actions {
   goToBody(b: Body): void;
   centerOn(b: Body): void;
+  centerOnRegion(r: Region): void;
+  centerOnEvent(e: SpaceEvent): void;
   infrared(id: string, on?: boolean): boolean | null;
   infraredFromPhoto(id: string): boolean;
   canChase(): boolean;
@@ -101,6 +103,7 @@ export function setupUI(store: Store, act: Actions) {
   };
   chaseBtn.addEventListener('click', toggleChase);
   let lastCam = '';
+  const centerName = $('center-now').querySelector('strong') as HTMLElement;
   const renderCamera = () => {
     const { focus, distance } = act.camera();
     const name =
@@ -110,6 +113,9 @@ export function setupUI(store: Store, act: Actions) {
         ? store.data.views.find((v) => `view:${v.id}` === focus)?.name
         : undefined) ??
       '';
+    if (name !== centerName.textContent) {
+      centerName.textContent = name;
+    }
     const text = `${t.camera}<strong>${fmtDistance(distance)}</strong>${esc(t.from(name))}`;
     if (text !== lastCam) {
       cam.innerHTML = text;
@@ -153,8 +159,14 @@ export function setupUI(store: Store, act: Actions) {
   $('info-x').addEventListener('click', () => store.select(null));
   body.addEventListener('click', (e) => {
     const s = store.selection;
-    if (s?.kind === 'body' && (e.target as HTMLElement).closest('[data-center]')) {
-      act.centerOn(s.body);
+    if (s && (e.target as HTMLElement).closest('[data-center]')) {
+      if (s.kind === 'body') {
+        act.centerOn(s.body);
+      } else if (s.kind === 'region') {
+        act.centerOnRegion(s.region);
+      } else {
+        act.centerOnEvent(s.event);
+      }
       return;
     }
     const ir = (e.target as HTMLElement).closest<HTMLElement>('[data-ir]');
@@ -275,12 +287,13 @@ export function setupUI(store: Store, act: Actions) {
       ${at?.type === 'void' ? `<p class="note">${esc(t.voidNote)}</p>` : ''}
       ${M31_SYSTEM.has(r.id) ? `<p class="note">${esc(t.spiralModel)}</p>` : ''}
       ${at?.glow ? `<p class="note">${esc(t.nebulaGlow)}</p>` : ''}
+      ${at?.type === 'void' ? `<p class="note">${esc(t.voidEye)}</p>` : ''}
       ${r.catalog ? `<p class="note">${esc(t.catalogDensity)}</p><p class="note">${esc(t.catalogDrift)}</p>` : ''}
       ${r.id === 'oort-cloud' ? `<p class="note">${esc(t.oortDensity)}</p>` : ''}
       ${irRow(r)}
       ${photoRow(r)}
       <p>${esc(r.desc)}</p>
-      <div class="go-row"><button type="button" class="go" data-go>${t.goTo}</button></div>`;
+      <div class="go-row"><button type="button" class="go" data-go>${t.goTo}</button><button type="button" class="go" data-center title="${esc(t.centerTipPlace)}">${t.centerOn}</button></div>`;
   };
 
   const photoRow = (r: Region) => {
@@ -322,7 +335,7 @@ export function setupUI(store: Store, act: Actions) {
       <p class="sub">${target ? esc(target.name) : ''}</p>
       ${e.desc ? `<p>${esc(e.desc)}</p>` : ''}
       ${e.uncertain ? `<p class="note">${esc(e.uncertain)}</p>` : ''}
-      <div class="go-row"><button type="button" class="go" data-go>${t.eventGo}</button></div>`;
+      <div class="go-row"><button type="button" class="go" data-go>${t.eventGo}</button><button type="button" class="go" data-center title="${esc(t.centerTipPlace)}">${t.centerOn}</button></div>`;
   };
 
   // distances and speed change every frame; refresh them a few times a second

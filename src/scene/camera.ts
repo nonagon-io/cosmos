@@ -154,6 +154,18 @@ export class CameraRig {
     this.targetDistance = d1;
   }
 
+  /** Turns to `id` from where the camera is, without moving it, and from then on turns round it. */
+  turnTo(id: string) {
+    const offset = this.offset(this.distance);
+    const eye: Vec = [
+      this.focusPos[0] + offset[0],
+      this.focusPos[1] + offset[1],
+      this.focusPos[2] + offset[2],
+    ];
+    const at = this.positionOf(id);
+    this.flyTo(id, at ? len(sub(at, eye)) : this.distance);
+  }
+
   /** Camera position relative to the focus, in ecliptic coordinates. */
   private offset(d: number): Vec {
     const cp = Math.cos(this.pitch);

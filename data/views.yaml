@@ -144,6 +144,17 @@
   focus: sgr-a
   distance: 22000
   ladder: sgr-a
+# the Boötes Void, from its edge to the middle, where the sky is dark
+- id: bootes-inside
+  name: กลางช่องว่าง
+  focus: bootes-void
+  distance: 6300000000
+  ladder: bootes-void
+- id: bootes-edge
+  name: ขอบช่องว่าง
+  focus: bootes-void
+  distance: 10400000000000
+  ladder: bootes-void
 # any other region, framed whole; the name shown is the region's
 - id: region
   name: ทั้งวัตถุ

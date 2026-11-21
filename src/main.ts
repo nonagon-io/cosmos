@@ -2,6 +2,7 @@ import { galaxyLook } from './scene/galaxy';
 import './styles.css';
 import { Ephemeris, type OrbitData } from './astro/ephemeris';
 import type { Vec } from './astro/kepler';
+import { setupBrowse } from './browse';
 import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
 import { setupHoleClock } from './holeclock';
@@ -12,7 +13,7 @@ import type { ElementSets } from './scene/particles';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField } from './scene/stars';
 import type { SurveyManifest, SurveyName } from './scene/survey';
 import { World } from './scene/world';
-import { setupSearch } from './search';
+import { type Hit, setupSearch } from './search';
 import { COSMIC_RANGE, DEEP_RANGE, Store } from './store';
 import { setupTimeline } from './timeline';
 import { setupUI } from './ui';
@@ -214,6 +215,15 @@ async function start() {
         return [h.look, h.roll];
       }
     }
+    // a void is seen from well off our line of sight: zooming out straight back along it would fly the camera
+    // through the Milky Way, where the galaxy catalogues give way to our own neighbourhood
+    if (at?.type === 'void') {
+      const d = eclipticDir(at.ra, at.dec);
+      const side: Vec = [d[1], -d[0], 0];
+      const sl = Math.hypot(...side) || 1;
+      const a = (35 * Math.PI) / 180;
+      return [[0, 1, 2].map((c) => Math.cos(a) * d[c] + (Math.sin(a) * side[c]) / sl) as Vec, 0];
+    }
     return [
       at && (at.type === 'blackhole' || at.type === 'nebula' || M31_SYSTEM.has(id))
         ? eclipticDir(at.ra, at.dec)
@@ -251,8 +261,20 @@ async function start() {
       if (!eph.exists(b.id, store.day)) {
         store.setDay(eph.firstDay(b.id) + 2);
       }
-      // keep the zoom level, just move the pivot
-      rig.flyTo(b.id, rig.distance);
+      rig.turnTo(b.id);
+    },
+    centerOnRegion(r: Region) {
+      rig.turnTo(r.at ? `region:${r.id}` : 'sun');
+    },
+    /** Centres on whatever an event is about, keeping the date. */
+    centerOnEvent(e: SpaceEvent) {
+      const b = store.bodyById.get(e.focus);
+      const r = store.regionById.get(e.focus);
+      if (b) {
+        actions.centerOn(b);
+      } else if (r) {
+        actions.centerOnRegion(r);
+      }
     },
     goToRegion(r: Region) {
       store.select({ kind: 'region', region: r });
@@ -318,7 +340,7 @@ async function start() {
       if (kind === 'solar') {
         return [...own, ...all.filter((v) => !v.ladder)];
       }
-      const top = own[own.length - 1].distance * 1.5;
+      const top = Math.max(...own.map((v) => v.distance)) * 1.5;
       const shared = all.filter(
         (v) =>
           !v.ladder &&
@@ -435,7 +457,7 @@ async function start() {
   const ui = setupUI(store, actions);
   const timeline = setupTimeline(store, (e) => actions.goToEvent(e));
   setupHoleClock(store);
-  setupSearch(store, (h) => {
+  const go = (h: Hit) => {
     if (h.kind === 'body') {
       actions.goToBody(h.item);
     } else if (h.kind === 'region') {
@@ -443,7 +465,9 @@ async function start() {
     } else {
       actions.goToEvent(h.item);
     }
-  });
+  };
+  setupSearch(store, go);
+  setupBrowse(store, go);
 
   rig.onClick = (x, y) => {
     const id = world.pick(x, y);
@@ -490,8 +514,15 @@ async function start() {
       timeline.step(1);
     } else if (e.key === 'f' && store.selection?.kind === 'body') {
       actions.goToBody(store.selection.body);
-    } else if (e.key === 'c' && store.selection?.kind === 'body') {
-      actions.centerOn(store.selection.body);
+    } else if (e.key === 'c' && store.selection) {
+      const s = store.selection;
+      if (s.kind === 'body') {
+        actions.centerOn(s.body);
+      } else if (s.kind === 'region') {
+        actions.centerOnRegion(s.region);
+      } else {
+        actions.centerOnEvent(s.event);
+      }
     } else if (e.key === 'v') {
       ui.toggleChase();
     }

@@ -40,13 +40,26 @@
   <header class="brand">
     <div class="brand-row"><h1 data-t="title">เอกภพ</h1><select id="lang" class="lang" data-t-label="language" aria-label="ภาษา"></select></div>
     <p data-t="tagline"></p>
+    <div class="search-row">
     <div class="search" role="search">
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <input id="search" type="search" role="combobox" aria-autocomplete="list" aria-controls="search-list" aria-expanded="false" autocomplete="off" spellcheck="false">
       <kbd id="search-kbd"></kbd>
       <ul id="search-list" role="listbox" hidden></ul>
     </div>
+    <button type="button" class="browse-btn" id="browse-btn" data-t-tip="browseTip" data-t-label="browseTip" aria-label="ดูวัตถุทั้งหมดตามหมวด"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg><span data-t="browse">ทั้งหมด</span></button>
+    </div>
   </header>
+
+  <div class="center-now" id="center-now" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/></svg><span data-t="centerNow">ศูนย์กลาง</span><strong></strong></div>
+
+  <dialog class="browse" id="browse" data-t-label="browseTitle" aria-label="วัตถุทั้งหมด">
+    <div class="browse-head"><h2 data-t="browseTitle">วัตถุทั้งหมด</h2><button type="button" class="close" data-t-label="close" aria-label="ปิด">×</button></div>
+    <div class="browse-body">
+      <div class="browse-tabs" role="tablist"></div>
+      <div class="browse-list"></div>
+    </div>
+  </dialog>
 
   <div class="panel toolbar" role="group" data-t-label="layers" aria-label="ชั้นข้อมูล">
     <label class="chk"><input type="checkbox" data-layer="orbits" checked> <span data-t="orbits">วงโคจร</span></label>

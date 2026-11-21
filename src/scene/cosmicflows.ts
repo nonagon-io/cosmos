@@ -36,11 +36,34 @@ const CLUSTERS: { id: string; ra: number; dec: number; mpc: number }[] = [
   { id: 'leo', ra: 176.15, dec: 19.7, mpc: 92 },
 ];
 
+/**
+ * Zooming is the observer growing or shrinking: zoomed out far enough to frame something, they see the galaxies
+ * round it; zoomed in, they are small and the same galaxies are far off for their size. So a galaxy keeps full
+ * brightness out to `reach` times the camera's distance to what it is on, `zoom`, and dims with the square of
+ * the distance beyond.
+ */
+export const SEEN = {
+  zoom: { value: 1e30 },
+  reach: { value: 3 },
+};
+
 export const POINT_VERT = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
 uniform float size;
+uniform float zoom;
+uniform float reach;
+varying float vKeep;
 void main() {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float dist = length(mv.xyz);
+  float r = reach * zoom / dist;
+  vKeep = min(1.0, r * r);
+  if (vKeep < 0.01) {
+    gl_PointSize = 0.0;
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
+  gl_Position = projectionMatrix * mv;
   gl_PointSize = size;
   ${LOGDEPTH_VERT}
 }
@@ -49,11 +72,12 @@ void main() {
 export const POINT_FRAG = /* glsl */ `
 ${LOGDEPTH_FRAG_PARS}
 uniform float opacity;
+varying float vKeep;
 void main() {
   ${LOGDEPTH_FRAG}
   float r = length(gl_PointCoord - 0.5) * 2.0;
   if (r > 1.0) discard;
-  gl_FragColor = vec4(vec3(1.0, 0.9, 0.78) * (1.0 - r * r), opacity);
+  gl_FragColor = vec4(vec3(1.0, 0.9, 0.78) * (1.0 - r * r), opacity * vKeep);
   #include <colorspace_fragment>
 }
 `;
@@ -87,7 +111,12 @@ export class Cosmicflows {
     this.mat = new ShaderMaterial({
       vertexShader: POINT_VERT,
       fragmentShader: POINT_FRAG,
-      uniforms: { size: { value: 3 }, opacity: { value: 0 } },
+      uniforms: {
+        size: { value: 3 },
+        opacity: { value: 0 },
+        zoom: SEEN.zoom,
+        reach: SEEN.reach,
+      },
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,

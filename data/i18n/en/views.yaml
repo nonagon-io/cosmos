@@ -22,6 +22,8 @@ cosmic-web: { name: The cosmic web }
 deep-map: { name: The farthest mapped }
 observable-universe: { name: The observable universe }
 sgr-shadow: { name: Shadow of the black hole }
+bootes-edge: { name: Edge of the void }
+bootes-inside: { name: Middle of the void }
 sgr-s2-pericentre: { name: S2 at its closest }
 sgr-s2: { name: Orbit of S2 }
 sgr-s-stars: { name: The S-star cluster }

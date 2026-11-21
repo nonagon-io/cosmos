@@ -1,9 +1,16 @@
 import { type AstroTime, MakeTime } from 'astronomy-engine';
 import {
   AdditiveBlending,
+  BufferAttribute,
+  BufferGeometry,
+  CanvasTexture,
   Group,
+  Line,
+  LineDashedMaterial,
   MathUtils,
   PerspectiveCamera,
+  Points,
+  PointsMaterial,
   Scene,
   type ShaderMaterial,
   Sprite,
@@ -19,7 +26,7 @@ import { COSMIC_AGE, HOLE_SPEEDS, type Store, scaleFactor } from '../store';
 import { BodyVisual } from './bodies';
 import { CameraRig } from './camera';
 import { Cmb } from './cmb';
-import { Cosmicflows, WEB_LAYER } from './cosmicflows';
+import { Cosmicflows, SEEN, WEB_LAYER } from './cosmicflows';
 import { CraftScene, type Frame } from './craft';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
@@ -82,6 +89,9 @@ const PRIORITY: Record<Kind, number> = {
 // spacecraft have no size; this is how close the camera may get to their marker
 const CRAFT_RADIUS_AU = 3e-9;
 const LONG_PERIOD = 200 * 365.25;
+// how far beyond Earth, away from the Sun, the L2 point lies, and when a craft bound there got into its loop
+const L2_AU = 0.01;
+const CRUISE_END: Record<string, string> = { jwst: '2022-01-24' };
 
 type OrbitKind =
   | { kind: 'loop'; period: number; samples: number; rebuild: number }
@@ -136,6 +146,11 @@ export class World {
   private readonly smallBodies: SmallBodies;
   private readonly oort: OortCloud;
   private readonly heliosphere: Heliosphere;
+  // the empty point JWST loops round, and the Sun–Earth line it lies on
+  private readonly l2 = new Group();
+  private readonly l2Line: Line;
+  private readonly l2Mark: Points;
+  private l2Pos: Vec | null = null;
   private readonly tails: CometTails;
   private readonly stars3d: Stars3D;
   private readonly nebulae: Nebulae;
@@ -153,6 +168,8 @@ export class World {
   private readonly holePass = new LowResPass();
   private readonly webPass = new LowResPass(true);
   private holeScale = 1;
+  // on a void, out among the galaxies: everything is true to size and nothing of the Milky Way's own shows
+  private onVoid = false;
   private holeBudget = HOLE_BUDGET;
   private frameMs = 1000 / 60;
   private readonly sgr: SgrA | null = null;
@@ -212,6 +229,42 @@ export class World {
     this.smallBodies = new SmallBodies(this.world, elementSets);
     this.oort = new OortCloud(this.world);
     this.heliosphere = new Heliosphere(this.world);
+    this.l2Line = new Line(
+      new BufferGeometry().setAttribute('position', new BufferAttribute(new Float32Array(6), 3)),
+      new LineDashedMaterial({
+        color: '#9fb3d1',
+        dashSize: 0.0012,
+        gapSize: 0.0012,
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    this.l2Line.frustumCulled = false;
+    const ring = document.createElement('canvas');
+    ring.width = ring.height = 32;
+    const g = ring.getContext('2d');
+    if (g) {
+      g.strokeStyle = '#fff';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.arc(16, 16, 11, 0, Math.PI * 2);
+      g.stroke();
+    }
+    this.l2Mark = new Points(
+      new BufferGeometry().setAttribute('position', new BufferAttribute(new Float32Array(3), 3)),
+      new PointsMaterial({
+        color: '#c4de54',
+        size: 11,
+        sizeAttenuation: false,
+        map: new CanvasTexture(ring),
+        transparent: true,
+        depthWrite: false,
+      }),
+    );
+    this.l2Mark.frustumCulled = false;
+    this.l2.add(this.l2Line, this.l2Mark);
+    this.l2.visible = false;
+    this.world.add(this.l2);
     this.tails = new CometTails(this.world, store.data.bodies, (id) => eph.perihelion(id));
     this.stars3d = new Stars3D(this.world, field);
     const gl = this.renderer.getContext();
@@ -360,6 +413,13 @@ export class World {
         line.material.uniforms.span.value = span;
         line.material.uniforms.future.value = 0.15;
         line.material.uniforms.pastFloor.value = 0.22;
+        // the month-long trip out from Earth is dashed, so the loop itself reads as the orbit
+        const until = CRUISE_END[b.id];
+        if (until) {
+          line.material.uniforms.dashUntil.value =
+            Date.parse(`${until}T00:00:00Z`) / 86400000 + 2440587.5 - J2000;
+          line.material.uniforms.dash.value = 0.0006;
+        }
         return { line, spec: { kind: 'halo', span } };
       }
       const line = new OrbitLine(b, true);
@@ -540,6 +600,12 @@ export class World {
     this.camPos = [cx, cy, cz];
     this.world.position.set(-focus[0], -focus[1], -focus[2]);
     this.world.updateMatrixWorld();
+    const fr = this.rig.focusId.startsWith('region:')
+      ? store.regionById.get(this.rig.focusId.slice(7))
+      : undefined;
+    this.onVoid = fr?.at?.type === 'void';
+    const onVoid = this.onVoid;
+    const trueSize = layers.trueSize || onVoid;
 
     const view = cam.matrixWorldInverse;
     const sunView = v3.set(-focus[0], -focus[2], focus[1]).applyMatrix4(view).clone();
@@ -554,7 +620,9 @@ export class World {
     for (const [id, vis] of this.visuals) {
       const p = this.positions.get(id);
       const shown =
-        p !== undefined && (vis.body.kind !== 'spacecraft' || layers.spacecraft || id === this.rig.focusId);
+        !onVoid &&
+        p !== undefined &&
+        (vis.body.kind !== 'spacecraft' || layers.spacecraft || id === this.rig.focusId);
       vis.group.visible = shown;
       if (!p || !shown) {
         continue;
@@ -578,7 +646,7 @@ export class World {
         pxPerAu,
         camDist,
         markerScale,
-        layers.trueSize,
+        trueSize,
         vis.body.id === 'sun' ? 0 : shrink,
       );
       if (earth && this.crafts.has(id)) {
@@ -601,6 +669,7 @@ export class World {
     for (const [id, o] of this.orbits) {
       this.updateOrbit(id, o, day, cx, cy, cz, selectedId);
     }
+    this.placeL2();
 
     const sunDist = Math.max(1e-9, Math.hypot(cx, cy, cz));
     this.smallBodies.update(
@@ -609,32 +678,36 @@ export class World {
       layers.smallBodies,
       this.rig.pxPerAu(sunDist, this.height),
       this.height,
-      layers.trueSize,
+      trueSize,
     );
-    this.oort.update(pr, layers.oort, sunDist, layers.trueSize);
-    this.heliosphere.update(layers.oort || layers.spacecraft, camDist);
+    this.oort.update(pr, layers.oort && !onVoid, sunDist, trueSize);
+    this.heliosphere.update(!onVoid && (layers.oort || layers.spacecraft), camDist);
     this.tails.update(
       (id) => this.positions.get(id),
       (id) => this.eph.velocity(id, day),
       [cx, cy, cz],
       (p) => this.rig.pxPerAu(Math.max(1e-12, Math.hypot(p[0] - cx, p[1] - cy, p[2] - cz)), this.height),
-      layers.trueSize,
+      trueSize,
     );
     // the sky sphere only holds stars with no distance; once we leave the Sun they would be in the wrong place
-    this.skyMat.uniforms.opacity.value = 1 - Stars3D.presence(camDist);
+    this.skyMat.uniforms.opacity.value = onVoid ? 0 : 1 - Stars3D.presence(camDist);
     const galaxy = Galaxy.presence(sunDist);
     // set before the Galaxy, which scales and fades the glows of satellite galaxies on top
     for (const o of this.deepSky) {
       if (o.glow) {
         const d = Math.hypot(o.pos[0] - cx, o.pos[1] - cy, o.pos[2] - cz);
         // seen from inside, a nebula is too thin to glow like this
-        (o.glow.material as SpriteMaterial).opacity = 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
+        const ours = onVoid && !o.galactic;
+        (o.glow.material as SpriteMaterial).opacity = ours
+          ? 0
+          : 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
       }
     }
-    this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, true, layers.trueSize);
-    this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
-    this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
-    this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
+    this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, !onVoid, trueSize);
+    this.galaxy.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
+    this.localGroup.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
+    this.localVolume.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
+    SEEN.zoom.value = camDist;
     this.cosmicflows.update(Math.hypot(cx, cy, cz), pr);
     this.cmb.update(Math.hypot(cx, cy, cz));
     for (const s of this.surveys) {
@@ -652,7 +725,7 @@ export class World {
       if (store.hole.playing) {
         store.setHole({ day: store.hole.day + HOLE_SPEEDS[store.hole.speedIndex] * dt });
       }
-      this.sgr.update(near ? store.hole.day : day, toCam, ppa, layers.trueSize, layers.orbits, pr);
+      this.sgr.update(near ? store.hole.day : day, toCam, ppa, trueSize, layers.orbits, pr);
       const side = this.sgr.quadPx(ppa) * pr;
       const area = Math.min(side * side, this.width * this.height * pr * pr);
       if (dt > 0) {
@@ -669,12 +742,15 @@ export class World {
       this.holeBudget = Math.max(this.holeBudget, HOLE_BUDGET / 8);
       this.holeScale = Math.min(1, Math.sqrt(this.holeBudget / Math.max(area, 1)));
       this.sgr.quad.layers.set(this.sgr.close && this.holeScale < 0.95 ? HOLE_LAYER : 0);
+      if (onVoid) {
+        this.sgr.group.visible = false;
+      }
     }
     // from far out the catalogued stars are a small clump around the Sun; let the Galaxy model take over
     // the measured stars reach only a few thousand light years, so from out where the whole Galaxy shows they
     // would only pile up into a blob at the Sun
     const starsGone = MathUtils.smoothstep(Math.log10(sunDist / AU_PER_LY), 4.3, 4.9);
-    this.stars3d.update(1, sunDist, camDist, (1 - 0.75 * galaxy) * (1 - starsGone));
+    this.stars3d.update(1, sunDist, camDist, onVoid ? 0 : (1 - 0.75 * galaxy) * (1 - starsGone));
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(cam.quaternion);
@@ -774,7 +850,7 @@ export class World {
     const parentId = body.parent ?? 'sun';
     const parent = this.positions.get(parentId);
     const craftHidden = body.kind === 'spacecraft' && !this.store.layers.spacecraft;
-    if (!this.store.layers.orbits || !p || !parent || craftHidden) {
+    if (!this.store.layers.orbits || this.onVoid || !p || !parent || craftHidden) {
       line.line.visible = false;
       return;
     }
@@ -814,7 +890,38 @@ export class World {
     }
   }
 
+  /** Shows L2 while JWST's loop round it does, as far beyond Earth as it is, straight away from the Sun. */
+  private placeL2() {
+    const loop = this.orbits.get('jwst')?.line;
+    const e = this.positions.get('earth');
+    const shown = !!loop?.line.visible && !!e;
+    this.l2.visible = shown;
+    this.l2Pos = null;
+    if (!shown || !loop || !e) {
+      return;
+    }
+    const r = Math.hypot(...e);
+    const p: Vec = [e[0] * (1 + L2_AU / r), e[1] * (1 + L2_AU / r), e[2] * (1 + L2_AU / r)];
+    this.l2Pos = p;
+    const a = loop.material.uniforms.opacity.value as number;
+    const line = this.l2Line.geometry.getAttribute('position') as BufferAttribute;
+    line.setXYZ(1, p[0], p[1], p[2]);
+    line.needsUpdate = true;
+    this.l2Line.computeLineDistances();
+    (this.l2Line.material as LineDashedMaterial).opacity = a * 0.7;
+    const mark = this.l2Mark.geometry.getAttribute('position') as BufferAttribute;
+    mark.setXYZ(0, p[0], p[1], p[2]);
+    mark.needsUpdate = true;
+    (this.l2Mark.material as PointsMaterial).opacity = Math.min(1, a * 1.6);
+  }
+
   private layoutLabels(selectedId: string | null, camDist: number) {
+    // on a void, only what the observer at this zoom could see is named, as with the galaxies' brightness
+    const reach = SEEN.reach.value * 3 * camDist;
+    const place = (p: Vec) =>
+      this.onVoid && Math.hypot(p[0] - this.camPos[0], p[1] - this.camPos[1], p[2] - this.camPos[2]) > reach
+        ? null
+        : this.screenOf(p);
     const entries: LabelEntry[] = [];
     const sun = this.projected.get('sun');
     for (const [id, pr] of this.projected) {
@@ -875,12 +982,16 @@ export class World {
       if (d < (reg.at?.type === 'blackhole' ? 0 : reg.view / 9) || d > far) {
         continue;
       }
+      // out on a void the Galaxy is a speck; what lies inside it is not labelled
+      if (this.onVoid && reg.at?.type !== 'galaxy' && reg.at?.type !== 'void') {
+        continue;
+      }
       // nor while zoomed in on something small, as the galaxies themselves fade then
       if (reg.at?.type === 'galaxy' && !reg.at.home && Galaxy.presence(camDist) < 0.3) {
         continue;
       }
       if (at) {
-        const s = this.screenOf(at.pos);
+        const s = place(at.pos);
         if (s) {
           entries.push({
             id: `region:${reg.id}`,
@@ -899,11 +1010,7 @@ export class World {
       const outer = reg.outer ?? 0;
       const mid = reg.id === 'oort-cloud' ? outer * 0.8 : (inner + outer) / 2;
       const ang = MathUtils.degToRad(reg.id === 'oort-cloud' ? 40 : 205);
-      const s = this.screenOf([
-        Math.cos(ang) * mid,
-        Math.sin(ang) * mid,
-        reg.id === 'oort-cloud' ? mid * 0.35 : 0,
-      ]);
+      const s = place([Math.cos(ang) * mid, Math.sin(ang) * mid, reg.id === 'oort-cloud' ? mid * 0.35 : 0]);
       if (s) {
         entries.push({
           id: `region:${reg.id}`,
@@ -918,10 +1025,26 @@ export class World {
       }
     }
 
+    if (this.l2Pos) {
+      const s = place(this.l2Pos);
+      if (s) {
+        entries.push({
+          id: 'l2',
+          text: t.l2,
+          x: s.x,
+          // above the ring, centred, as JWST's own name sits to the right and it is usually close by
+          y: s.y - 16,
+          priority: 70,
+          color: '#c4de54',
+          className: 'region',
+          offset: -(t.l2.length * 6.6 + 8) / 2,
+        });
+      }
+    }
     const galaxy = Galaxy.presence(Math.hypot(...this.camPos));
     if (this.sgr?.close) {
       for (const [k, name] of this.sgr.stars.entries()) {
-        const s = this.screenOf(this.sgr.positionOf(k));
+        const s = place(this.sgr.positionOf(k));
         if (s) {
           entries.push({
             id: `sstar:${name}`,
@@ -936,10 +1059,10 @@ export class World {
         }
       }
     }
-    if (galaxy > 0.5) {
+    if (galaxy > 0.5 && !this.onVoid) {
       for (const arm of ARMS) {
         const r = ARM_LABEL_R[arm.id];
-        const s = this.screenOf(this.galaxy.place(galactic(r, armBeta(arm, r), 0)));
+        const s = place(this.galaxy.place(galactic(r, armBeta(arm, r), 0)));
         if (s) {
           const text = t.arms.get(arm.id) ?? arm.id;
           entries.push({
@@ -959,7 +1082,7 @@ export class World {
     const sunLy = Math.hypot(...this.camPos) / AU_PER_LY;
     if (sunLy > LOCAL_GROUP_LABELS && sunLy < 3e7 && Galaxy.presence(camDist) > 0.3) {
       for (const d of this.localGroup.named) {
-        const s = this.screenOf(this.localGroup.placeOf(d));
+        const s = place(this.localGroup.placeOf(d));
         if (s) {
           entries.push({
             id: `lg:${d.name}`,
@@ -978,7 +1101,7 @@ export class World {
       if (!Cosmicflows.labelled(Math.hypot(...this.camPos))) {
         continue;
       }
-      const s = this.screenOf(this.cosmicflows.placeOf(c.at));
+      const s = place(this.cosmicflows.placeOf(c.at));
       if (s) {
         entries.push({
           id: `cf:${c.id}`,
@@ -999,7 +1122,7 @@ export class World {
       Math.hypot(...this.camPos) < 1.2e8 * AU_PER_LY
     ) {
       for (const d of this.localVolume.named) {
-        const s = this.screenOf(this.localVolume.placeOf(d.at));
+        const s = place(this.localVolume.placeOf(d.at));
         if (s) {
           entries.push({
             id: `lv:${d.name}`,
@@ -1014,7 +1137,7 @@ export class World {
         }
       }
     }
-    if (Stars3D.presence(camDist) > 0.3 && galaxy < 0.5) {
+    if (Stars3D.presence(camDist) > 0.3 && galaxy < 0.5 && !this.onVoid) {
       const exposure = Stars3D.exposure(Math.hypot(...this.camPos));
       const bright: { i: number; name: string; mag: number; x: number; y: number }[] = [];
       for (const [i, name] of this.stars.labels) {
@@ -1022,7 +1145,7 @@ export class World {
         const d = Math.hypot(sp[0] - this.camPos[0], sp[1] - this.camPos[1], sp[2] - this.camPos[2]);
         // label the ones that look brightest from here
         const mag = this.stars3d.absmag(i) + 5 * Math.log10(d / 206264.806) - 5 - exposure;
-        const p = mag < 3 ? this.screenOf(sp) : null;
+        const p = mag < 3 ? place(sp) : null;
         if (p) {
           bright.push({ i, name, mag, x: p.x, y: p.y });
         }

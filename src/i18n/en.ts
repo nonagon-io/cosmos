@@ -91,6 +91,21 @@ export const en: Dict = {
 
   search: 'Search',
   searchHint: 'Search planets, moons, craft or events',
+  browse: 'Browse',
+  browseTip: 'Everything, by category',
+  browseTitle: 'Everything',
+  browseCats: {
+    planets: 'Sun and planets',
+    dwarfs: 'Dwarf planets',
+    moons: 'Moons',
+    small: 'Asteroids and comets',
+    craft: 'Spacecraft',
+    zones: 'Regions and edges',
+    clusters: 'Star clusters',
+    nebulae: 'Nebulae',
+    galaxies: 'Galaxies and black holes',
+    events: 'Events',
+  },
   searchNone: 'Nothing found',
 
   kinds: {
@@ -223,7 +238,12 @@ export const en: Dict = {
   twoBody: 'Outside the JPL data; this position comes from a two-body orbit.',
   goTo: 'Go there',
   centerOn: 'Center on it',
-  centerTip: 'Orbit and follow this body, keeping the current zoom (C key)',
+  centerNow: 'Centered on',
+  l2: 'Lagrange point L2',
+  voidEye:
+    'Zooming is the observer growing or shrinking. Zoomed out to frame the void, they are big enough to see the galaxies round it; zoomed in, they are small and the same galaxies are far off for their size, so those past about three times the zoom distance dim with the square of the distance. The nearest galaxies to the middle are about 20 million light years off, and a naked eye makes out one like Andromeda only to about 10 million, so the sky there really is black. Had the Milky Way been here, we would not have known of other galaxies until big telescopes.',
+  centerTipPlace: 'Turn to this and orbit it, from where the camera is now (C)',
+  centerTip: 'Turn to, orbit and follow this body, from where the camera is now (C key)',
   chase: 'Face direction of travel',
   fieldNote:
     'The stars look crowded around the Sun because the catalogue is incomplete, not because they are.',

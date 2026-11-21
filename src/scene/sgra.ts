@@ -14,6 +14,7 @@ import {
   PointsMaterial,
   ShaderMaterial,
   Vector2,
+  Vector3,
 } from 'three';
 import { orient, solveKepler, type Vec } from '../astro/kepler';
 import { LOGDEPTH_FRAG, LOGDEPTH_FRAG_PARS, LOGDEPTH_VERT, LOGDEPTH_VERT_PARS } from './glsl';
@@ -210,7 +211,63 @@ uniform float dist;
 uniform vec2 full;
 uniform float boost;
 uniform float pr;
+uniform vec3 cam;
+uniform vec3 gpole;
+uniform float dust;
 varying vec3 vColor;
+
+float hash(vec3 p) {
+  p = fract(p * 0.3183099 + 0.1) * 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+float noise(vec3 x) {
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+    mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
+    f.z);
+}
+float clouds(vec3 x) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int k = 0; k < 4; k++) {
+    v += a * noise(x);
+    x = x * 2.03 + 17.1;
+    a *= 0.5;
+  }
+  return v;
+}
+
+// Visual extinction in magnitudes between the camera and a star, both in pc from Sgr A*. The dust is a layer
+// along the Galactic plane, thinning as exp(-|z|/H), cut off at the disk's edge and broken into clouds
+const float H = 100.0;
+const float EDGE = 15000.0;
+float extinction(vec3 s) {
+  vec3 d = s - cam;
+  float len = length(d);
+  vec3 u = d / len;
+  float b = dot(cam, u);
+  float c = dot(cam, cam) - EDGE * EDGE;
+  float disc = b * b - c;
+  if (disc <= 0.0) return 0.0;
+  float t0 = max(0.0, -b - sqrt(disc));
+  if (t0 >= len) return 0.0;
+  len -= t0;
+  vec3 a = cam + u * t0;
+  float z0 = dot(a, gpole);
+  float z1 = dot(s, gpole);
+  float dz = z1 - z0;
+  // z runs straight along the path, so the integral of exp(-|z|/H) has a closed form
+  float path = abs(dz) < 0.01 * H
+    ? len * exp(-abs(z0 + z1) * 0.5 / H)
+    : len * (sign(z1) * (1.0 - exp(-abs(z1) / H)) - sign(z0) * (1.0 - exp(-abs(z0) / H))) * H / dz;
+  // clouds at about 1 and 3 kpc along the line of sight, where most of the dust toward the centre is
+  float lumps = 0.5 * (clouds((a + u * min(len, 1000.0)) / 90.0) + clouds((a + u * min(len, 3000.0)) / 150.0));
+  return dust * path * (0.3 + 2.2 * smoothstep(0.3, 0.7, lumps));
+}
+
 void main() {
   float th = aOmega * year;
   vec3 v = position;
@@ -229,7 +286,10 @@ void main() {
   // and the bulge keep the same surface brightness as the camera comes in, a bright speck growing until it
   // breaks up into stars, as a real one would
   float f = mix(full.x, full.y, aFar) / dist;
-  vColor = aColor * min(1.0, f * f) * boost / keep;
+  // dust reddens as it dims: blue is lost about 1.3 times as fast as visual, red at 0.75
+  float av = extinction(p / 206265.0);
+  vec3 dim = pow(vec3(10.0), -0.4 * av * vec3(0.75, 1.0, 1.3));
+  vColor = aColor * dim * min(1.0, f * f) * boost / keep;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   ${LOGDEPTH_VERT}
 }
@@ -249,6 +309,7 @@ void main() {
 const M_SUNS = 4.3e6;
 const AU_PER_PC = 206265;
 const BULGE_AU = 1500 * AU_PER_PC;
+const BAR_GLOW = 5;
 // how near, in AU, the cluster's and the bulge's stars are drawn at full brightness (see clusterVert)
 const FULL_CLUSTER = 2500 * 63241;
 const FULL_BULGE = 2500 * 63241;
@@ -455,6 +516,28 @@ export class SgrA {
         inner ? 0 : 1,
       );
     }
+    // the bar most of the bulge's light comes from, about 1.5 kpc long and a few hundred pc thick, its near end
+    // toward positive longitude about 27 degrees off our line of sight (after Dwek 1995 and Wegg & Gerhard
+    // 2013). Seen from the Sun it stands some 5 degrees either side of the plane, out of the worst of the dust
+    const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+    const away = this.axes[2];
+    const ah = away[0] * pole[0] + away[1] * pole[1] + away[2] * pole[2];
+    // toward the Sun in the plane, and toward longitude 90
+    const l90 = cross([0, 1, 2].map((c) => -(away[c] - ah * pole[c])) as Vec, pole);
+    const toSun = cross(pole, l90);
+    const tilt = 27 * MathUtils.DEG2RAD;
+    const long: Vec = [0, 1, 2].map((c) => Math.cos(tilt) * toSun[c] + Math.sin(tilt) * l90[c]) as Vec;
+    const wide = cross(pole, long);
+    for (let i = 0; i < 150000; i++) {
+      const [x, y, z] = [gauss() * 1100, gauss() * 420, gauss() * 300].map((v) => v * AU_PER_PC);
+      add(
+        [0, 1, 2].map((c) => x * long[c] + y * wide[c] + z * pole[c]) as Vec,
+        pole,
+        (rand() < 0.75 ? giant : yellow).clone().multiplyScalar(BAR_GLOW * (0.3 + rand() * 0.45)),
+        rand() < 0.03 ? 2.6 : 1.5,
+        1,
+      );
+    }
     // the disk's plane on the sky, from two directions in it
     const u = sky(orient(1, 0, 130 * MathUtils.DEG2RAD, 96 * MathUtils.DEG2RAD, 0));
     const w = sky(orient(0, 1, 130 * MathUtils.DEG2RAD, 96 * MathUtils.DEG2RAD, 0));
@@ -511,6 +594,10 @@ export class SgrA {
           ppa: { value: 1 },
           full: { value: new Vector2(FULL_CLUSTER, FULL_BULGE) },
           pr: { value: 1 },
+          cam: { value: new Vector3() },
+          gpole: { value: new Vector3(...pole) },
+          // magnitudes per parsec in the plane
+          dust: { value: 0.0015 },
         },
         transparent: true,
         depthWrite: false,
@@ -586,6 +673,7 @@ export class SgrA {
     cu.year.value = day / 365.25;
     cu.dist.value = camDist;
     cu.pr.value = pr;
+    cu.cam.value.set(toCam[0] / AU_PER_PC, toCam[1] / AU_PER_PC, toCam[2] / AU_PER_PC);
     // once the whole bulge is under a pixel the Galaxy model's own is all there is to see. Smaller than the
     // screen, it needs only so many stars, drawn brighter: all of them piled onto a few pixels stall the GPU
     const across = 2 * BULGE_AU * pxPerAu * pr;
