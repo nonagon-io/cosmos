@@ -27,6 +27,7 @@ import { type LabelEntry, Labels } from './labels';
 import { LocalGroup, type LocalGroupRow, M31_SYSTEM } from './localgroup';
 import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
+import { Nebulae } from './nebulae';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
 import { type ElementSets, OortCloud, SmallBodies } from './particles';
 import { SgrA } from './sgra';
@@ -133,6 +134,7 @@ export class World {
   private readonly heliosphere: Heliosphere;
   private readonly tails: CometTails;
   private readonly stars3d: Stars3D;
+  private readonly nebulae: Nebulae;
   private readonly galaxy: Galaxy;
   private readonly localGroup: LocalGroup;
   private readonly localVolume: LocalVolume;
@@ -208,6 +210,12 @@ export class World {
     this.heliosphere = new Heliosphere(this.world);
     this.tails = new CometTails(this.world, store.data.bodies, (id) => eph.perihelion(id));
     this.stars3d = new Stars3D(this.world, field);
+    const gl = this.renderer.getContext();
+    this.nebulae = new Nebulae(
+      this.world,
+      store.data.regions,
+      gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1],
+    );
     this.labels = new Labels(labelRoot, onPick);
     for (const r of store.data.regions) {
       if (!r.at) {
@@ -577,6 +585,7 @@ export class World {
         (o.glow.material as SpriteMaterial).opacity = 0.6 * MathUtils.smoothstep(d / o.radius, 1.5, 4);
       }
     }
+    this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, true);
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], layers.trueSize, camDist);
