@@ -626,6 +626,11 @@ export class SgrA {
     return [0, 1, 2].map((c) => n * an[c] + e * ae[c] + z * az[c]) as Vec;
   }
 
+  /** 1 at the scale of the S-stars' orbits, falling to 0 by a few hundred thousand AU from the hole. */
+  static nearness(camDist: number) {
+    return 1 - MathUtils.smoothstep(Math.log10(camDist), 4.6, 5.4);
+  }
+
   /**
    * Moves the stars to `day` and fades things by where the camera is: `toCam` runs from Sgr A* to the camera
    * in ecliptic AU.
@@ -658,9 +663,8 @@ export class SgrA {
       this.starPos.set(p, k * 3);
     }
     (this.points.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
-    const lg = Math.log10(camDist);
     // the orbits span a few thousand AU; far out they would only be a speck over the Galaxy model
-    const near = 1 - MathUtils.smoothstep(lg, 4.6, 5.4);
+    const near = SgrA.nearness(camDist);
     this.close = near > 0.001;
     this.orbitMat.opacity = 0.45 * near;
     for (const l of this.loops) {
@@ -680,7 +684,8 @@ export class SgrA {
     this.group.visible = across > 1;
     const k = Math.max(1, Math.min(this.clusterCount, Math.ceil(across * across * 0.3)));
     this.cluster.geometry.setDrawRange(0, k);
-    cu.boost.value = this.clusterCount / k;
+    // among the S-stars the rest step back to an eighth, so the orbits stand out
+    cu.boost.value = (this.clusterCount / k) * (1 - 0.875 * near);
     cu.ppa.value = pxPerAu * pr;
   }
 

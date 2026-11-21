@@ -231,7 +231,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
+  height: 36px;
   padding: 0 10px;
   background: var(--panel);
   backdrop-filter: blur(10px);
@@ -456,7 +456,8 @@ select:focus-visible {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 7px 44px 7px 32px;
+  height: 36px;
+  padding: 0 44px 0 32px;
   color: var(--fg);
   font: 13.5px var(--f-body);
 }
@@ -1061,6 +1062,10 @@ select:focus-visible {
   display: block;
   font-style: normal;
   color: var(--accent, inherit);
+}
+
+.photos figcaption .mapped {
+  display: block;
 }
 
 .photos figcaption small {

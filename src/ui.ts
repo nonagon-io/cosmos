@@ -305,7 +305,7 @@ export function setupUI(store: Store, act: Actions) {
         (p) => `
         <figure>
           <a href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${import.meta.env.BASE_URL}photos/${esc(p.file)}" alt="${esc(`${r.name}, ${p.by} ${p.year}`)}" loading="lazy"></a>
-          <figcaption>${esc(t.photoKind[p.kind])} · ${esc(p.by)} ${p.year}${p.part ? `<em>${esc(t.photoPart[p.part])}</em>` : ''}<small>${esc(p.credit)}</small></figcaption>
+          <figcaption>${esc(t.photoKind[p.kind])} · ${esc(p.by)} ${p.year}${p.part ? `<em>${esc(t.photoPart[p.part])}</em>` : ''}${p.mapped ? `<span class="mapped">${esc(t.photoMapped(p.mapped))}</span>` : ''}<small>${esc(p.credit)}</small></figcaption>
         </figure>`,
       )
       .join('');

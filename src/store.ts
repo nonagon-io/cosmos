@@ -133,7 +133,7 @@ export class Store {
     smallBodies: true,
     oort: true,
     spacecraft: true,
-    trueSize: false,
+    trueSize: true,
     sdss: true,
     desi: true,
     quaia: true,

@@ -121,6 +121,8 @@ const Region = z.object({
         url: z.string().url(),
         // when it shows only part of the nebula, or adds other light
         part: z.enum(['part', 'centre', 'core', 'ring', 'bar', 'cliffs', 'mexico', 'xray']).optional(),
+        // filters shown as red, green and blue, when they are gas lines given colours that are not their own
+        mapped: z.tuple([z.string(), z.string(), z.string()]).optional(),
       }),
     )
     .optional(),

@@ -41,6 +41,7 @@ const PAL = {
   dust: '#5a3422',
 };
 type Hex = string;
+const REDDENED = '#ff5a3c';
 
 const vert = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
@@ -1246,6 +1247,8 @@ const MODELS: Record<string, Model> = {
     // y north, x east
     pa: 90,
     build: (b) => {
+      // the dust in front dims blue Hβ more than red Hα, so it is redder and warmer than the pink of most
+      // emission nebulae
       // two glowing clouds, NGC 7000 to the east and the Pelican to the west, with the dark cloud L935 lying
       // in front between them, which is all that makes the outline of the continent
       clumps(b, {
@@ -1254,7 +1257,7 @@ const MODELS: Record<string, Model> = {
         center: [26, 0, 0],
         levels: [12, 6, 5],
         bright: 0.1,
-        color: (_p, u) => mix(PAL.pink, PAL.ha, u),
+        color: (_p, u) => mix(REDDENED, PAL.ha, u),
       });
       clumps(b, {
         axes: [18, 22, 14],
@@ -1262,7 +1265,7 @@ const MODELS: Record<string, Model> = {
         center: [-42, 4, 0],
         levels: [7, 6, 5],
         bright: 0.16,
-        color: (_p, u) => mix(PAL.pink, PAL.ha, u),
+        color: (_p, u) => mix(REDDENED, PAL.ha, u),
       });
       lane(
         b,
@@ -1288,7 +1291,7 @@ const MODELS: Record<string, Model> = {
         4,
         1500,
         0,
-        PAL.ha,
+        REDDENED,
         0.05,
       );
     },
@@ -1816,6 +1819,9 @@ export class Nebulae {
     });
   }
 
+  /** Ids of the nebulae drawn plainly enough this frame to be worth a label. */
+  readonly shown = new Set<string>();
+
   hasInfrared(id: string) {
     return this.regions.has(id);
   }
@@ -1852,6 +1858,7 @@ export class Nebulae {
    * galaxies; at true size it is left to shrink and fades once it is only a pixel or two.
    */
   update(cam: Vec, height: number, fovDeg: number, pixelRatio: number, on: boolean, trueSize: boolean) {
+    this.shown.clear();
     const scale = (height * pixelRatio) / (2 * Math.tan(MathUtils.degToRad(fovDeg / 2)));
     const sunDist = Math.hypot(...cam);
     const hold = NEBULA_MIN_PX * minSizeAt(sunDist, 3e4, 3e5);
@@ -1891,6 +1898,9 @@ export class Nebulae {
       const grow = trueSize ? 1 : Math.max(1, hold / across);
       const seen = far * (trueSize ? MathUtils.smoothstep(across, 1, 4) : 1);
       n.mat.uniforms.seen.value = seen;
+      if (seen > 0.3) {
+        this.shown.add(n.id);
+      }
       n.points.visible = seen > 0;
       // a nebula a few pixels across needs only a few hundred of its points, drawn brighter; all of them piled
       // on the same pixels is what slows the GPU when the whole Galaxy is in view

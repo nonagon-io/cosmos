@@ -20,7 +20,7 @@ const MONTHS = [
 export const en: Dict = {
   title: 'Cosmos',
   tagline:
-    'Where the planets, moons, comets and spacecraft really are, 1900 to 2100. Zoom out to the edge of the observable universe.',
+    'The universe from real data: the Solar System in 1900–2100, the stars, the Milky Way and millions of galaxies beyond.',
   loading: 'Loading the cosmos…',
   loadingData: 'Loading orbits…',
   language: 'Language',
@@ -184,6 +184,8 @@ export const en: Dict = {
     mexico: 'The "Mexico" part only',
     xray: 'With X-rays overlaid in purple',
   },
+  photoMapped: (rgb: string[]) =>
+    `Assigned colours, not true: red ${rgb[0]} · green ${rgb[1]} · blue ${rgb[2]}`,
   photoNote:
     'Real pictures from telescopes; tap one for the original. These are processed too: visible-light pictures often use filters for each gas, given colours of their own, and are far brighter than the eye would see.',
   irLight: 'Infrared-style colours',

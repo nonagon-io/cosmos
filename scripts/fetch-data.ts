@@ -57,16 +57,17 @@ function sbdbQuery(params: Record<string, string>) {
   return getJson<QueryResult>(`https://ssd-api.jpl.nasa.gov/sbdb_query.api?${q}`);
 }
 
-/** Flat [a, e, i, node, peri, M at J2000] per asteroid, in AU and degrees. */
+/** Flat [a, e, i, node, peri, M at J2000, H] per asteroid, in AU and degrees; H is the absolute magnitude. */
 async function asteroids(sbClass: string, maxH: number) {
   const res = await sbdbQuery({
-    fields: 'a,e,i,om,w,ma,epoch',
+    fields: 'a,e,i,om,w,ma,epoch,H',
     'sb-class': sbClass,
     'sb-cdata': JSON.stringify({ AND: [`H|LT|${maxH}`] }),
   });
   const out: number[] = [];
   for (const row of res.data) {
-    const [a, e, i, om, w, ma, epoch] = row.map(Number);
+    // Number(null) is 0, so a missing magnitude has to be caught first
+    const [a, e, i, om, w, ma, epoch, h] = row.map((v) => (v === null ? Number.NaN : Number(v)));
     if (!(a > 0 && e < 1)) {
       continue;
     }
@@ -78,6 +79,7 @@ async function asteroids(sbClass: string, maxH: number) {
       round(om, 5),
       round(w, 5),
       round(wrap360(ma - n * (epoch - J2000)), 5),
+      Number.isFinite(h) ? round(h, 3) : maxH,
     );
   }
   return out;
@@ -85,13 +87,13 @@ async function asteroids(sbClass: string, maxH: number) {
 
 async function comets() {
   const res = await sbdbQuery({
-    fields: 'q,e,i,om,w,tp',
+    fields: 'q,e,i,om,w,tp,M1',
     'sb-kind': 'c',
     'sb-cdata': JSON.stringify({ AND: ['e|LT|1'] }),
   });
   const out: number[] = [];
   for (const row of res.data) {
-    const [q, e, i, om, w, tp] = row.map(Number);
+    const [q, e, i, om, w, tp, m1] = row.map((v) => (v === null ? Number.NaN : Number(v)));
     if (!(q > 0 && e < 1) || Number.isNaN(tp)) {
       continue;
     }
@@ -104,6 +106,8 @@ async function comets() {
       round(om, 5),
       round(w, 5),
       round(wrap360(n * (J2000 - tp)), 5),
+      // a comet's total magnitude, coma and all; many have none on record
+      Number.isFinite(m1) ? round(m1, 3) : 15,
     );
   }
   return out;
@@ -120,7 +124,7 @@ async function smallBodies() {
     comets: await comets(),
   };
   for (const [k, v] of Object.entries(sets)) {
-    console.log(`  ${k}: ${v.length / 6}`);
+    console.log(`  ${k}: ${v.length / 7}`);
   }
   save('small-bodies.json', sets);
 }

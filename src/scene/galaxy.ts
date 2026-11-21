@@ -285,6 +285,8 @@ export class Galaxy {
   private myr = 0;
   /** How much the Galaxy is drawn bigger than it is, to stay visible from far off. */
   grow = 1;
+  /** How bright the disk is drawn, below 1 to step back behind something in front of it. */
+  dim = 1;
   private readonly dwarfs: (Dwarf & { group: Group; stars: Cloud; haze: Cloud; glowSize: number })[] = [];
 
   /** `dwarfs` are satellite galaxies, drawn as loose clouds of points around their real positions. */
@@ -480,7 +482,7 @@ export class Galaxy {
     ] as const) {
       c.mat.uniforms.scale.value = scale;
       c.mat.uniforms.grow.value = this.grow;
-      c.show(o * exposureFor(px * this.grow), px * this.grow);
+      c.show(o * this.dim * exposureFor(px * this.grow), px * this.grow);
     }
 
     for (const d of this.dwarfs) {

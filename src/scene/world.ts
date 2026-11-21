@@ -36,7 +36,7 @@ import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
 import { Nebulae } from './nebulae';
 import { ellipseHead, ellipseLoop, OrbitLine, pathLine, sampleLoop } from './orbits';
-import { type ElementSets, OortCloud, SmallBodies } from './particles';
+import { type ElementSets, OORT_GONE, OortCloud, SmallBodies } from './particles';
 import { SgrA } from './sgra';
 import { AU_PER_LY, eclipticDir, type StarData, type StarField, Stars3D, skyStars } from './stars';
 import { Survey, type SurveyManifest, type SurveyName } from './survey';
@@ -113,6 +113,9 @@ interface Projected {
 }
 
 const v3 = new Vector3();
+// px a frame of orbital motion past which a label is hidden, and below which it comes back
+const LABEL_TOO_FAST = 12;
+const LABEL_SLOW_AGAIN = 5;
 
 /** Owns the renderer, the scene graph and the per-frame update of everything in it. */
 export class World {
@@ -136,6 +139,10 @@ export class World {
     glow: Sprite | null;
   }[] = [];
   readonly projected = new Map<string, Projected>();
+  // each body's place relative to its parent last frame, and how fast that moves on screen
+  private readonly lastRel = new Map<string, Vec>();
+  private readonly labelSpeed = new Map<string, number>();
+  private readonly fastLabels = new Set<string>();
   private readonly scene = new Scene();
   private readonly world = new Group();
   private readonly sky = new Scene();
@@ -652,6 +659,16 @@ export class World {
       if (earth && this.crafts.has(id)) {
         this.placeCraft(vis.body, p, earth, r, [p[0] - cx, p[1] - cy, p[2] - cz], vis.radiusAu, day, time);
       }
+      // orbital motion on screen, leaving out the camera's own: sped up, a fast orbiter's label would
+      // jump around from frame to frame
+      const pp = this.positions.get(vis.body.parent ?? 'sun') ?? [0, 0, 0];
+      const rel: Vec = [p[0] - pp[0], p[1] - pp[1], p[2] - pp[2]];
+      const last = this.lastRel.get(id);
+      const step = last ? Math.hypot(rel[0] - last[0], rel[1] - last[1], rel[2] - last[2]) * pxPerAu : 0;
+      this.lastRel.set(id, rel);
+      // capped so one jump of the timeline hides a label only for a moment
+      const speed = Math.max(Math.min(step, LABEL_TOO_FAST * 3), (this.labelSpeed.get(id) ?? 0) * 0.8);
+      this.labelSpeed.set(id, speed);
       // screen position, for labels and picking
       v3.set(p[0] - focus[0], p[2] - focus[2], -(p[1] - focus[1])).project(cam);
       if (v3.z < 1 && Math.abs(v3.x) < 1.2 && Math.abs(v3.y) < 1.2) {
@@ -704,6 +721,10 @@ export class World {
       }
     }
     this.nebulae.update([cx, cy, cz], this.height, cam.fov, pr, !onVoid, trueSize);
+    if (this.sgr) {
+      const g = this.sgr.group.position;
+      this.galaxy.dim = 1 - 0.875 * SgrA.nearness(Math.hypot(cx - g.x, cy - g.y, cz - g.z));
+    }
     this.galaxy.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
     this.localGroup.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
     this.localVolume.update(this.height, cam.fov, [cx, cy, cz], trueSize, camDist);
@@ -928,6 +949,17 @@ export class World {
       const b = this.store.bodyById.get(id) as Body;
       const parent = this.projected.get(b.parent ?? 'sun');
       const important = id === selectedId || id === this.rig.focusId;
+      // the camera follows what it is focused on, so only that one's label holds still
+      const speed = this.labelSpeed.get(id) ?? 0;
+      const fast = this.fastLabels.has(id) ? speed > LABEL_SLOW_AGAIN : speed > LABEL_TOO_FAST;
+      if (fast) {
+        this.fastLabels.add(id);
+      } else {
+        this.fastLabels.delete(id);
+      }
+      if (fast && id !== this.rig.focusId) {
+        continue;
+      }
       // with the Galaxy drawn bigger than it is the Sun's real place no longer lines up with it, and from the
       // Local Group its name would only crowd out the Galaxy's
       const lg = Math.hypot(...this.camPos) > LOCAL_GROUP_LABELS * AU_PER_LY;
@@ -978,7 +1010,13 @@ export class World {
             : reg.view * 20
           : reg.at?.type === 'blackhole'
             ? 1e9
-            : reg.view * 6;
+            : // a nebula on screen can be named from however far it is drawn
+              reg.at?.type === 'nebula' && this.nebulae.shown.has(reg.id)
+              ? Number.POSITIVE_INFINITY
+              : // the label goes with the cloud's outer shell
+                reg.id === 'oort-cloud'
+                ? OORT_GONE
+                : reg.view * 6;
       if (d < (reg.at?.type === 'blackhole' ? 0 : reg.view / 9) || d > far) {
         continue;
       }
