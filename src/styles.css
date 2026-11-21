@@ -1,29 +1,33 @@
 :root {
-  --bg: #04050d;
-  --panel: rgba(14, 15, 34, 0.8);
-  --panel-solid: rgba(14, 15, 34, 0.96);
-  --panel-dim: rgba(9, 10, 26, 0.5);
-  --input: #10122a;
-  --line: rgba(200, 185, 255, 0.16);
-  --line-strong: rgba(200, 185, 255, 0.26);
-  --fg: #eeeaf8;
-  --soft: #d1cce4;
-  --muted: #8f8bab;
+  --bg: #02060c;
+  --panel: rgba(6, 16, 26, 0.78);
+  --panel-solid: rgba(5, 13, 22, 0.96);
+  --panel-dim: rgba(4, 11, 19, 0.5);
+  --input: #071422;
+  --glass: linear-gradient(180deg, rgba(143, 230, 255, 0.07), rgba(143, 230, 255, 0.02));
+  --glow: 0 0 24px rgba(79, 195, 255, 0.08), inset 0 0 18px rgba(143, 230, 255, 0.04);
+  --line: rgba(143, 230, 255, 0.22);
+  --line-strong: rgba(143, 230, 255, 0.36);
+  --fg: #dff4ff;
+  --soft: #b9dcec;
+  --muted: #86adc0;
   --accent: #c4de54;
   --on-accent: #151a03;
   --nebula: #9d8cff;
   --note: #c9bdff;
-  --label-dim: #b0abc9;
+  --label-dim: #a9cfe2;
   --label-region: #a598f0;
-  --label-star: #e8e1f2;
-  --event-1: #7f7b9c;
-  --f-display: "Noto Serif Thai", "Noto Serif", Georgia, serif;
-  --f-body: "IBM Plex Sans Thai", system-ui, -apple-system, sans-serif;
+  --label-star: #e6f2fa;
+  --event-1: #7b9cae;
+  --f-display: "Kanit", system-ui, sans-serif;
+  --f-body: "Kanit", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --top: env(safe-area-inset-top, 0px);
   --bottom: env(safe-area-inset-bottom, 0px);
+  /* the line under the header where the info box, the centre tag and the scale all start */
+  --under: calc(72px + var(--top));
   color-scheme: dark;
 }
 
@@ -40,7 +44,7 @@ body {
 body {
   background: var(--bg);
   color: var(--fg);
-  font: 14px / 1.5 var(--f-body);
+  font: 300 14px / 1.5 var(--f-body);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -148,7 +152,8 @@ select:focus-visible {
 
 .panel {
   position: fixed;
-  background: var(--panel);
+  background: var(--glass), var(--panel);
+  box-shadow: var(--glow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
@@ -165,40 +170,49 @@ select:focus-visible {
 
 .brand {
   position: fixed;
-  z-index: 4;
+  /* above the centre tag, so the layers dropdown opens over it */
+  z-index: 6;
   top: calc(16px + var(--top));
   left: var(--gl);
-  max-width: min(380px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  /* leaves room for the language picker in the top right corner */
+  max-width: calc(100% - var(--gl) - var(--gr) - 72px);
   pointer-events: none;
   text-shadow: 0 1px 12px var(--bg);
 }
 
 .brand h1 {
   margin: 0;
-  font: 700 26px / 1.25 var(--f-display);
+  font: 300 22px / 1 var(--f-display);
+  letter-spacing: 0.3em;
+  white-space: nowrap;
 }
 
-.brand-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.brand p {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
+.brand-rule {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  background: var(--line-strong);
 }
 
 .lang {
+  position: fixed;
+  z-index: 6;
+  top: calc(16px + var(--top));
+  right: var(--gr);
   pointer-events: auto;
   appearance: none;
-  background: var(--panel-dim);
+  flex: none;
+  height: 36px;
+  background: var(--glass), var(--panel);
+  box-shadow: var(--glow);
   border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 4px 8px;
+  border-radius: 6px;
+  padding: 0 10px;
   color: var(--soft);
-  font: 500 12px var(--f-body);
+  font: 400 12.5px var(--f-body);
   cursor: pointer;
 }
 
@@ -216,8 +230,9 @@ select:focus-visible {
   display: flex;
   gap: 6px;
   align-items: flex-start;
-  margin-top: 10px;
-  width: min(380px, 100%);
+  flex: 0 1 auto;
+  width: 400px;
+  min-width: 0;
   pointer-events: auto;
 }
 
@@ -230,16 +245,18 @@ select:focus-visible {
 .browse-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 36px;
   height: 36px;
-  padding: 0 10px;
-  background: var(--panel);
+  padding: 0;
+  background: var(--glass), var(--panel);
+  box-shadow: var(--glow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--soft);
-  font: 13px var(--f-body);
+  font: 300 13px var(--f-body);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -263,7 +280,7 @@ select:focus-visible {
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   color: var(--fg);
-  font: 14px / 1.5 var(--f-body);
+  font: 300 14px / 1.5 var(--f-body);
 }
 
 .browse[open] {
@@ -286,7 +303,7 @@ select:focus-visible {
 
 .browse-head h2 {
   margin: 0;
-  font: 600 20px var(--f-display);
+  font: 400 20px var(--f-display);
 }
 
 .browse-head .close {
@@ -327,7 +344,7 @@ select:focus-visible {
   border-radius: 5px;
   padding: 7px 10px;
   color: var(--muted);
-  font: 13.5px var(--f-body);
+  font: 300 13.5px var(--f-body);
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
@@ -379,7 +396,7 @@ select:focus-visible {
   border-radius: 5px;
   padding: 6px 8px;
   color: var(--fg);
-  font: 13.5px var(--f-body);
+  font: 300 13.5px var(--f-body);
   text-align: left;
   cursor: pointer;
 }
@@ -451,7 +468,8 @@ select:focus-visible {
 
 .search input {
   width: 100%;
-  background: var(--panel);
+  background: var(--glass), var(--panel);
+  box-shadow: var(--glow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--line);
@@ -459,7 +477,7 @@ select:focus-visible {
   height: 36px;
   padding: 0 44px 0 32px;
   color: var(--fg);
-  font: 13.5px var(--f-body);
+  font: 300 13.5px var(--f-body);
 }
 
 .search input::placeholder {
@@ -494,6 +512,10 @@ select:focus-visible {
 @media (pointer: coarse) {
   .search kbd {
     display: none;
+  }
+
+  .search input {
+    padding-right: 6px;
   }
 }
 
@@ -559,7 +581,7 @@ select:focus-visible {
 
 .center-now {
   position: fixed;
-  top: calc(74px + var(--top));
+  top: var(--under);
   left: 50%;
   transform: translateX(-50%);
   z-index: 5;
@@ -596,14 +618,33 @@ select:focus-visible {
   font-size: 13px;
 }
 
+.layers-wrap {
+  position: relative;
+}
+
+.browse-btn .sliders {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.browse-btn[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
 .toolbar {
-  top: calc(16px + var(--top));
-  right: var(--gr);
+  position: absolute;
+  top: 42px;
+  left: 0;
+  z-index: 6;
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+  padding: 12px 14px;
+  text-shadow: none;
 }
 
 .chk {
@@ -624,12 +665,12 @@ select:focus-visible {
 .scale {
   position: fixed;
   z-index: 2;
-  top: calc(64px + var(--top));
+  top: var(--under);
   right: var(--gr);
   width: 236px;
   display: flex;
   flex-direction: column;
-  max-height: calc(100% - 64px - var(--top) - var(--tl-h, 120px) - 14px - var(--bottom) - 12px);
+  max-height: calc(100% - var(--under) - var(--tl-h, 120px) - 14px - var(--bottom) - 12px);
 }
 
 .scale ol {
@@ -638,19 +679,29 @@ select:focus-visible {
   margin: 0;
   padding: 0;
   position: relative;
-  flex: 0 1 230px;
-  min-height: 140px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   perspective: 520px;
   touch-action: none;
   user-select: none;
   cursor: ns-resize;
-  border-radius: 6px;
-  background: rgb(0 0 0 / 0.45);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   /* the rows fade out toward the top and bottom of the drum as well as by their tilt */
   mask-image: linear-gradient(transparent, #000 12%, #000 88%, transparent);
+}
+
+/* the frame sits on a wrapper, since the drum itself is masked to fade its ends */
+.scale .drum {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 230px;
+  min-height: 140px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
 }
 
 .scale li {
@@ -718,20 +769,27 @@ select:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* a small glowing tag over the drum, so the floating ladder still reads as a control */
+/* a quiet heading ruled off across the top of the drum */
 .scale .eyebrow {
-  margin: 0 0 6px;
-  padding: 4px 12px;
-  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* as tall as the centre tag, so the two read on one line with the top of the info box */
+  height: 32px;
+  margin: 0;
+  padding: 0 2px;
   font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, rgb(8 10 20 / 0.7));
-  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  box-shadow:
-    0 0 10px color-mix(in srgb, var(--accent) 35%, transparent),
-    0 0 26px color-mix(in srgb, var(--accent) 14%, transparent);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  color: var(--soft);
+  text-shadow: 0 0 10px var(--bg);
+}
+
+.scale .eyebrow::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid rgb(143 230 255 / 0.45);
+  mask-image: linear-gradient(90deg, #000, transparent);
 }
 
 /* the drum floats over the scene with no frame; the frame starts with the camera readout below it */
@@ -763,17 +821,56 @@ select:focus-visible {
 
 .info {
   left: var(--gl);
-  top: calc(156px + var(--top));
+  top: var(--under);
   width: 330px;
-  max-height: calc(100% - 188px - var(--tl-h, 120px) - var(--top) - var(--bottom));
+  max-height: calc(100% - 104px - var(--tl-h, 120px) - var(--top) - var(--bottom));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* the card scrolls inside, so the close button stays put in the corner */
+#info-body {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  padding: 16px 16px 14px;
+  padding: 0 16px 14px;
+}
+
+/* the heading stays at the top while the card scrolls; what passes under it blurs and fades out downward */
+.info-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 -16px;
+  padding: 16px 52px 10px 16px;
+}
+
+.info-head::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -28px;
+  z-index: -1;
+  background: linear-gradient(var(--panel-solid) 65%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  mask-image: linear-gradient(#000 60%, transparent);
+  pointer-events: none;
+}
+
+.info .info-head .eyebrow {
+  margin-top: 0;
+}
+
+.info .info-head .sub {
+  margin-bottom: 0;
 }
 
 .info .x {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  z-index: 2;
+  top: 13px;
+  right: 10px;
   width: 28px;
   height: 28px;
   background: none;
@@ -802,8 +899,7 @@ select:focus-visible {
 
 .info h2 {
   margin: 0;
-  padding-right: 24px;
-  font: 700 22px / 1.3 var(--f-display);
+  font: 400 22px / 1.3 var(--f-display);
   text-wrap: balance;
 }
 
@@ -854,11 +950,34 @@ select:focus-visible {
   border-left: 2px solid color-mix(in srgb, var(--nebula) 50%, transparent);
 }
 
+/* held at the foot of the card while it scrolls; what scrolls under it blurs and fades in from the top */
 .go-row {
-  display: flex;
-  flex-wrap: wrap;
+  position: sticky;
+  bottom: -14px;
+  z-index: 1;
+  display: grid;
+  /* auto-fit, so a lone button takes the whole row */
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 12px;
+  margin: 4px -16px -14px;
+  padding: 26px 16px 14px;
+}
+
+.go-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(transparent, var(--panel-solid) 60%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  mask-image: linear-gradient(transparent, #000 45%);
+  pointer-events: none;
+}
+
+.go-row .go {
+  min-width: 0;
+  text-align: center;
 }
 
 .go {
@@ -992,7 +1111,7 @@ select:focus-visible {
 }
 
 .date strong {
-  font: 700 24px / 1 var(--f-display);
+  font: 400 24px / 1 var(--f-display);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1297,17 +1416,10 @@ select:focus-visible {
   margin: 4px 0;
 }
 
-@media (min-width: 681px) and (max-width: 1120px) {
-  .toolbar {
-    max-width: calc(100% - var(--gl) - var(--gr) - 420px);
-    justify-content: flex-end;
-  }
-}
-
 /* on a narrow screen just a small drum under the search box, without the readout */
 @media (max-width: 980px) {
   .scale {
-    top: calc(148px + var(--top));
+    top: calc(72px + var(--top));
     right: auto;
     left: var(--gl);
     width: 150px;
@@ -1320,6 +1432,9 @@ select:focus-visible {
 
   .scale ol {
     --row: 28px;
+  }
+
+  .scale .drum {
     flex-basis: 120px;
     min-height: 120px;
   }
@@ -1336,7 +1451,7 @@ select:focus-visible {
 
 @media (max-width: 680px), (max-height: 520px) {
   .center-now {
-    top: calc(20px + var(--top));
+    top: calc(64px + var(--top));
     right: var(--gr);
     left: auto;
     transform: none;
@@ -1344,34 +1459,43 @@ select:focus-visible {
   }
 
   .scale {
-    top: calc(106px + var(--top));
+    top: calc(66px + var(--top));
   }
 
-  .brand p,
+  .brand {
+    gap: 6px;
+    max-width: calc(100% - var(--gl) - var(--gr) - 50px);
+  }
+
+  .brand h1 {
+    font-size: 17px;
+    letter-spacing: 0.04em;
+    margin-right: 4px;
+  }
+
+  .brand-rule,
   .credits,
   .stop {
     display: none;
   }
 
   .toolbar {
-    top: auto;
-    right: var(--gr);
-    left: var(--gl);
-    bottom: calc(var(--tl-h, 120px) + 22px + var(--bottom));
-    justify-content: center;
-    padding: 6px 10px;
+    left: auto;
+    right: 0;
   }
 
-  .toolbar .chk {
-    font-size: 12px;
+  /* the info box covers the drum here, which would only show as an empty frame above it */
+  body:has(#info:not([hidden])) .scale {
+    display: none;
   }
 
+  /* under the centre tag, which sits at its top right and would cover its close button */
   .info {
-    top: calc(110px + var(--top));
+    top: calc(104px + var(--top));
     left: var(--gl);
     right: var(--gr);
     width: auto;
-    max-height: calc(100% - 200px - var(--tl-h, 120px) - var(--top) - var(--bottom));
+    max-height: calc(100% - 104px - var(--top) - var(--tl-space, 146px) - 16px - var(--bottom));
   }
 
   .timeline {
@@ -1394,8 +1518,34 @@ select:focus-visible {
     scrollbar-width: none;
   }
 
+  .tl-head {
+    column-gap: 10px;
+  }
+
+  /* small enough to stay on the line with the play button, the time tucked under the date */
+  .tl-head .date {
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
   .date strong {
-    font-size: 19px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+  }
+
+  .date span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 9.5px;
+  }
+
+  .transport #play {
+    padding: 8px 11px;
   }
 
   .seg button {

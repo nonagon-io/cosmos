@@ -19,8 +19,6 @@ const MONTHS = [
 
 export const en: Dict = {
   title: 'Cosmos',
-  tagline:
-    'The universe from real data: the Solar System in 1900–2100, the stars, the Milky Way and millions of galaxies beyond.',
   loading: 'Loading the cosmos…',
   loadingData: 'Loading orbits…',
   language: 'Language',
@@ -91,7 +89,6 @@ export const en: Dict = {
 
   search: 'Search',
   searchHint: 'Search planets, moons, craft or events',
-  browse: 'Browse',
   browseTip: 'Everything, by category',
   browseTitle: 'Everything',
   browseCats: {

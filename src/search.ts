@@ -45,7 +45,13 @@ function score(keys: string[], q: string) {
 export function setupSearch(store: Store, choose: (h: Hit) => void) {
   const input = document.getElementById('search') as HTMLInputElement;
   const list = document.getElementById('search-list') as HTMLUListElement;
-  input.placeholder = t.searchHint;
+  // the full hint doesn't fit a phone's narrow box, so there it is just the word
+  const narrow = matchMedia('(max-width: 680px)');
+  const hint = () => {
+    input.placeholder = narrow.matches ? t.search : t.searchHint;
+  };
+  hint();
+  narrow.addEventListener('change', hint);
   input.setAttribute('aria-label', t.search);
   (document.getElementById('search-kbd') as HTMLElement).textContent = /Mac|iPhone|iPad/.test(
     navigator.platform,

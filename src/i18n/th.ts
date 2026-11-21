@@ -32,8 +32,6 @@ const MONTHS_SHORT = [
 
 export const th = {
   title: 'เอกภพ',
-  tagline:
-    'แผนที่เอกภพจากข้อมูลจริง ตั้งแต่ระบบสุริยะปี 1900–2100 ดาวฤกษ์ ทางช้างเผือก ไปจนถึงกาแล็กซีนับล้านและขอบเอกภพที่สังเกตได้',
   loading: 'กำลังโหลดเอกภพ…',
   loadingData: 'กำลังโหลดวงโคจร…',
   language: 'ภาษา',
@@ -101,7 +99,6 @@ export const th = {
   search: 'ค้นหา',
   searchHint: 'ค้นหาดาว ดวงจันทร์ ยาน หรือเหตุการณ์',
   searchNone: 'ไม่พบ',
-  browse: 'ทั้งหมด',
   browseTip: 'ดูวัตถุทั้งหมดตามหมวด',
   browseTitle: 'วัตถุทั้งหมด',
   browseCats: {

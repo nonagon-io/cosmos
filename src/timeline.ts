@@ -103,14 +103,20 @@ export function setupTimeline(store: Store, goToEvent: (e: SpaceEvent) => void) 
     .join('');
   const layoutMarks = () => {
     const width = marks.clientWidth;
+    // on a narrow track the lanes would climb out of the strip and over the speed buttons, so they stop at
+    // what fits; past that a mark takes the lane where it crowds the others least
+    const maxLanes = Math.max(1, Math.floor((marks.clientHeight - IMPORTANCE_HEIGHT[3] - 6) / LANE_STEP) + 1);
     const lanes: number[][] = [];
     const order = store.data.events.map((e, i) => ({ e, i })).sort((a, b) => b.e.importance - a.e.importance);
     const buttons = marks.querySelectorAll<HTMLElement>('[data-i]');
     for (const { e, i } of order) {
       const x = scale.toPos(store.eventDay(e)) * width;
       let lane = lanes.findIndex((xs) => xs.every((o) => Math.abs(o - x) >= MARK_GAP));
-      if (lane < 0) {
+      if (lane < 0 && lanes.length < maxLanes) {
         lane = lanes.push([]) - 1;
+      } else if (lane < 0) {
+        const room = lanes.map((xs) => Math.min(...xs.map((o) => Math.abs(o - x))));
+        lane = room.indexOf(Math.max(...room));
       }
       lanes[lane].push(x);
       buttons[i].style.setProperty('--h', `${IMPORTANCE_HEIGHT[e.importance] + lane * LANE_STEP}px`);

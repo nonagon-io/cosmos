@@ -49,6 +49,26 @@ export function setupUI(store: Store, act: Actions) {
     input.addEventListener('change', () => store.setLayer(k, input.checked));
   }
 
+  // the layer toggles fold into a dropdown under the filter button
+  const layersBtn = $('layers-btn');
+  const layers = $('layers');
+  const showLayers = (on: boolean) => {
+    layers.hidden = !on;
+    layersBtn.setAttribute('aria-expanded', String(on));
+  };
+  layersBtn.addEventListener('click', () => showLayers(Boolean(layers.hidden)));
+  document.addEventListener('pointerdown', (e) => {
+    if (!layers.hidden && !layers.parentElement?.contains(e.target as Node)) {
+      showLayers(false);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !layers.hidden) {
+      showLayers(false);
+      layersBtn.focus();
+    }
+  });
+
   // scale ladder
   const views = $('views');
   const renderStops = (list: View[]) => {
@@ -116,6 +136,13 @@ export function setupUI(store: Store, act: Actions) {
     if (name !== centerName.textContent) {
       centerName.textContent = name;
     }
+    // centring does nothing on what is already the centre, or on a region with no place of its own (the belts,
+    // the Oort cloud and the whole-sky layers all sit around the Sun), so the button goes
+    const centreBtn = body.querySelector<HTMLElement>('[data-center]');
+    if (centreBtn) {
+      const id = centreTarget();
+      centreBtn.hidden = !id || id === focus;
+    }
     const text = `${t.camera}<strong>${fmtDistance(distance)}</strong>${esc(t.from(name))}`;
     if (text !== lastCam) {
       cam.innerHTML = text;
@@ -156,6 +183,20 @@ export function setupUI(store: Store, act: Actions) {
   // info card
   const info = $('info');
   const body = $('info-body');
+  const regionTarget = (id: string) => (store.regionById.get(id)?.at ? `region:${id}` : null);
+  const centreTarget = (): string | null => {
+    const s = store.selection;
+    if (!s) {
+      return null;
+    }
+    if (s.kind === 'body') {
+      return s.body.id;
+    }
+    if (s.kind === 'region') {
+      return regionTarget(s.region.id);
+    }
+    return store.bodyById.has(s.event.focus) ? s.event.focus : regionTarget(s.event.focus);
+  };
   $('info-x').addEventListener('click', () => store.select(null));
   body.addEventListener('click', (e) => {
     const s = store.selection;
@@ -206,7 +247,7 @@ export function setupUI(store: Store, act: Actions) {
     } else {
       body.innerHTML = eventCard(s.event);
     }
-    info.scrollTop = 0;
+    body.scrollTop = 0;
   };
 
   const kindLine = (b: Body) => {
@@ -257,8 +298,8 @@ export function setupUI(store: Store, act: Actions) {
     }
     const sub = b.en !== b.name ? `<p class="sub">${esc(b.en)}</p>` : '<p class="sub"></p>';
     return `
-      <p class="eyebrow kind"><i style="background:${b.color}"></i>${esc(kindLine(b))}</p>
-      <h2>${esc(b.name)}</h2>${sub}
+      <header class="info-head"><p class="eyebrow kind"><i style="background:${b.color}"></i>${esc(kindLine(b))}</p>
+      <h2>${esc(b.name)}</h2>${sub}</header>
       <dl data-live></dl>
       <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
       ${notes.map((x) => `<p class="note">${esc(x)}</p>`).join('')}
@@ -277,8 +318,8 @@ export function setupUI(store: Store, act: Actions) {
       ? `<dt>${at.home ? t.distCentre : t.distSun}</dt><dd>${fmtDistance(at.ly * AU_PER_LY)}</dd><dt>${t.size}</dt><dd>${fmtDistance(at.radius * 2 * AU_PER_LY)}</dd>`
       : `<dt>${t.span}</dt><dd>${fmtDistance(r.inner ?? 0)} – ${fmtDistance(r.outer ?? 0)}<small>${esc(t.lightTime(fmtLightTime(r.outer ?? 0)))}</small></dd>`;
     return `
-      <p class="eyebrow">${at ? t.dsoKinds[at.type] : t.region}${r.model ? ` · ${t.model}` : ''}</p>
-      <h2>${esc(r.name)}</h2><p class="sub"></p>
+      <header class="info-head"><p class="eyebrow">${at ? t.dsoKinds[at.type] : t.region}${r.model ? ` · ${t.model}` : ''}</p>
+      <h2>${esc(r.name)}</h2><p class="sub"></p></header>
       <dl>${rows}</dl>
       ${r.stars ? `<p class="note">${esc(t.starField)}</p>` : ''}
       ${r.galaxies ? `<p class="note">${esc(t.galaxyField)}</p>` : ''}
@@ -330,9 +371,9 @@ export function setupUI(store: Store, act: Actions) {
   const eventCard = (e: SpaceEvent) => {
     const target = store.bodyById.get(e.focus);
     return `
-      <p class="eyebrow">${t.event} · ${t.date(dateOf(store.eventDay(e)))}</p>
+      <header class="info-head"><p class="eyebrow">${t.event} · ${t.date(dateOf(store.eventDay(e)))}</p>
       <h2>${esc(e.title)}</h2>
-      <p class="sub">${target ? esc(target.name) : ''}</p>
+      <p class="sub">${target ? esc(target.name) : ''}</p></header>
       ${e.desc ? `<p>${esc(e.desc)}</p>` : ''}
       ${e.uncertain ? `<p class="note">${esc(e.uncertain)}</p>` : ''}
       <div class="go-row"><button type="button" class="go" data-go>${t.eventGo}</button><button type="button" class="go" data-center title="${esc(t.centerTipPlace)}">${t.centerOn}</button></div>`;
@@ -425,9 +466,12 @@ export function setupUI(store: Store, act: Actions) {
   // panels above the timeline sit on its real height, which changes with wrapping
   const tl = document.querySelector<HTMLElement>('.timeline') as HTMLElement;
   const hc = document.getElementById('hole-clock') as HTMLElement;
-  const bar = new ResizeObserver(() =>
-    document.documentElement.style.setProperty('--tl-h', `${Math.max(tl.offsetHeight, hc.offsetHeight)}px`),
-  );
+  const bar = new ResizeObserver(() => {
+    const h = Math.max(tl.offsetHeight, hc.offsetHeight);
+    document.documentElement.style.setProperty('--tl-h', `${h}px`);
+    // the room the bar takes with its gap, nothing when it is hidden, so a phone's info box can run to the bottom
+    document.documentElement.style.setProperty('--tl-space', h ? `${h + 26}px` : '0px');
+  });
   bar.observe(tl);
   bar.observe(hc);
 

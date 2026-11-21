@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>เอกภพ</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#04050d">
+  <meta name="theme-color" content="#02060c">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <!-- the stylesheet arrives with the JS bundle, so the page stays hidden behind this until the app reveals it -->
   <style>
@@ -20,7 +20,7 @@
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Noto+Serif+Thai:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Kanit:wght@300;400;500;600&display=swap">
 </head>
 <body>
   <div id="boot"><span>กำลังโหลดเอกภพ…</span></div>
@@ -38,8 +38,8 @@
   <div id="labels"></div>
 
   <header class="brand">
-    <div class="brand-row"><h1 data-t="title">เอกภพ</h1><select id="lang" class="lang" data-t-label="language" aria-label="ภาษา"></select></div>
-    <p data-t="tagline"></p>
+    <h1 data-t="title">เอกภพ</h1>
+    <span class="brand-rule" aria-hidden="true"></span>
     <div class="search-row">
     <div class="search" role="search">
       <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4L14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -47,9 +47,24 @@
       <kbd id="search-kbd"></kbd>
       <ul id="search-list" role="listbox" hidden></ul>
     </div>
-    <button type="button" class="browse-btn" id="browse-btn" data-t-tip="browseTip" data-t-label="browseTip" aria-label="ดูวัตถุทั้งหมดตามหมวด"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg><span data-t="browse">ทั้งหมด</span></button>
+    <button type="button" class="browse-btn" id="browse-btn" data-t-tip="browseTip" data-t-label="browseTip" aria-label="ดูวัตถุทั้งหมดตามหมวด"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg></button>
+      <div class="layers-wrap">
+      <button type="button" class="browse-btn" id="layers-btn" aria-expanded="false" aria-controls="layers" data-t-tip="layers" data-t-label="layers" aria-label="ชั้นข้อมูล"><svg viewBox="0 0 16 16" aria-hidden="true" class="sliders"><path d="M2 4h7M13 4h1M2 12h1M7 12h7"/><circle cx="11" cy="4" r="1.8"/><circle cx="5" cy="12" r="1.8"/></svg></button>
+    <div class="panel toolbar" id="layers" role="group" data-t-label="layers" aria-label="ชั้นข้อมูล" hidden>
+      <label class="chk"><input type="checkbox" data-layer="orbits" checked> <span data-t="orbits">วงโคจร</span></label>
+      <label class="chk"><input type="checkbox" data-layer="labels" checked> <span data-t="labels">ชื่อ</span></label>
+      <label class="chk" data-t-tip="smallBodiesTip"><input type="checkbox" data-layer="smallBodies" checked> <span data-t="smallBodies">ดาวเคราะห์น้อย</span></label>
+      <label class="chk"><input type="checkbox" data-layer="spacecraft" checked> <span data-t="spacecraft">ยานอวกาศ</span></label>
+      <label class="chk"><input type="checkbox" data-layer="oort" checked> <span data-t="oort">เมฆออร์ต</span></label>
+      <label class="chk" data-t-tip="sdssTip"><input type="checkbox" data-layer="sdss" checked> <span>SDSS</span></label>
+      <label class="chk" data-t-tip="desiTip"><input type="checkbox" data-layer="desi" checked> <span>DESI</span></label>
+      <label class="chk" data-t-tip="quaiaTip"><input type="checkbox" data-layer="quaia" checked> <span>Quaia</span></label>
+      <label class="chk" data-t-tip="trueSizeTip"><input type="checkbox" data-layer="trueSize" checked> <span data-t="trueSize">ขนาดจริง</span></label>
+    </div>
+      </div>
     </div>
   </header>
+  <select id="lang" class="lang" data-t-label="language" aria-label="ภาษา"></select>
 
   <div class="center-now" id="center-now" role="status" aria-live="polite"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5"/><path d="M8 0.5v3M8 12.5v3M0.5 8h3M12.5 8h3"/></svg><span data-t="centerNow">ศูนย์กลาง</span><strong></strong></div>
 
@@ -61,21 +76,10 @@
     </div>
   </dialog>
 
-  <div class="panel toolbar" role="group" data-t-label="layers" aria-label="ชั้นข้อมูล">
-    <label class="chk"><input type="checkbox" data-layer="orbits" checked> <span data-t="orbits">วงโคจร</span></label>
-    <label class="chk"><input type="checkbox" data-layer="labels" checked> <span data-t="labels">ชื่อ</span></label>
-    <label class="chk" data-t-tip="smallBodiesTip"><input type="checkbox" data-layer="smallBodies" checked> <span data-t="smallBodies">ดาวเคราะห์น้อย</span></label>
-    <label class="chk"><input type="checkbox" data-layer="spacecraft" checked> <span data-t="spacecraft">ยานอวกาศ</span></label>
-    <label class="chk"><input type="checkbox" data-layer="oort" checked> <span data-t="oort">เมฆออร์ต</span></label>
-    <label class="chk" data-t-tip="sdssTip"><input type="checkbox" data-layer="sdss" checked> <span>SDSS</span></label>
-    <label class="chk" data-t-tip="desiTip"><input type="checkbox" data-layer="desi" checked> <span>DESI</span></label>
-    <label class="chk" data-t-tip="quaiaTip"><input type="checkbox" data-layer="quaia" checked> <span>Quaia</span></label>
-    <label class="chk" data-t-tip="trueSizeTip"><input type="checkbox" data-layer="trueSize" checked> <span data-t="trueSize">ขนาดจริง</span></label>
-  </div>
 
   <aside class="scale">
     <p class="eyebrow" data-t="scale">ระยะซูม</p>
-    <ol id="views"></ol>
+    <div class="drum"><ol id="views"></ol></div>
     <div class="panel scale-foot">
     <p class="cam" id="cam"></p>
     <button type="button" class="chase" id="chase" aria-pressed="false" data-t-tip="chaseTip" hidden><span data-t="chase">หันตามทิศที่ดาวมุ่งไป</span></button>
