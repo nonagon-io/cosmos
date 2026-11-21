@@ -1400,6 +1400,15 @@ select:focus-visible {
   pointer-events: none;
 }
 
+.credits a {
+  color: inherit;
+  pointer-events: auto;
+}
+
+.credits a:hover {
+  color: var(--soft);
+}
+
 #data-error {
   position: fixed;
   inset: 40px;

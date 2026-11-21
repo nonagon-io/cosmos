@@ -278,6 +278,8 @@ export const en: Dict = {
   dataError: (k: number) => `${k} problem${k === 1 ? '' : 's'} in the data`,
   dataErrorHint: 'Fix the files in data/ and this page reloads by itself.',
   loadError: 'Could not load the orbit data. Try reloading the page.',
+  codeLicense: 'code MIT',
+  photoLicense: 'CC BY 4.0',
   credits:
-    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG, CelesTrak · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Spacecraft models: NASA 3D Resources · Dwarf galaxies: Local Volume Database (Pace 2024) · Nearby galaxies: UNGC (Karachentsev 2013), PGC (Paturel 2003) · Galaxy distances: Cosmicflows-4 (Tully 2023), 2MRS (Huchra 2012), 6dFGS (Jones 2009), groups (Tully 2015, Tempel 2017), SDSS DR17, DESI DR1, Quaia (Storey-Fisher 2024) · CMB: Planck 2018 (ESA)',
+    'Data: NASA/JPL Horizons, JPL SBDB, astronomy-engine, HYG (CC BY-SA 4.0, converted), CelesTrak · Textures: Solar System Scope (CC BY 4.0), NASA/JHUAPL/SwRI · Spacecraft models: NASA 3D Resources · Dwarf galaxies: Local Volume Database (Pace 2024) · Nearby galaxies: UNGC (Karachentsev 2013), PGC (Paturel 2003) · Galaxy distances: Cosmicflows-4 (Tully 2023), 2MRS (Huchra 2012), 6dFGS (Jones 2009), groups (Tully 2015, Tempel 2017), SDSS DR17, DESI DR1, Quaia (Storey-Fisher 2024) · CMB: Planck 2018 (ESA)',
 };

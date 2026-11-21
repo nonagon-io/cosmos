@@ -100,3 +100,9 @@ All data lives in `data/` as YAML and is checked against `src/data/schema.ts` on
 - `events.yaml`: timeline events. `importance: 3` stops playback when that box is ticked, 2 shows a toast. `uncertain` adds a note for dates that are estimates.
 - `timeline.yaml`: the date range, the slider's stretch and the starting camera.
 - `i18n/en/`: English text keyed by id. Names come from the `en` field. UI text is in `src/i18n/th.ts` and `en.ts`.
+
+## License
+
+The code is MIT, © 2026 Nonagon Co., Ltd. (see `LICENSE`). It's a demo we keep ourselves, so we don't take pull requests, but you're welcome to fork it.
+
+The data, maps, models and photos are not ours and keep their own licenses, credited above, on the page and on each card. The star files in `public/data` are converted from HYG and stay under CC BY-SA 4.0. Planet maps from Solar System Scope and the photos from ESA/Hubble, ESA/Webb, ESO and NOIRLab are CC BY 4.0; NASA's are public domain.
