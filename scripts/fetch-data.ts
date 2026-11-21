@@ -691,7 +691,7 @@ async function textures() {
     if (existsSync(file)) {
       continue;
     }
-    const res = await fetch(url, { headers: { 'User-Agent': 'solar-system-demo/1.0' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'cosmos-demo/1.0' } });
     if (!res.ok) {
       console.warn(`  ${name}: ${res.status}`);
       continue;
