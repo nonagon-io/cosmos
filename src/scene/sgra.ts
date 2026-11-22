@@ -9,6 +9,7 @@ import {
   MathUtils,
   Mesh,
   NormalBlending,
+  Plane,
   PlaneGeometry,
   Points,
   PointsMaterial,
@@ -199,6 +200,7 @@ void main() {
 // The stars round it, drawn on circular orbits at the speed its mass gives them
 const clusterVert = /* glsl */ `
 ${LOGDEPTH_VERT_PARS}
+#include <clipping_planes_pars_vertex>
 attribute vec3 aAxis;
 attribute float aOmega;
 attribute vec3 aColor;
@@ -290,14 +292,18 @@ void main() {
   float av = extinction(p / 206265.0);
   vec3 dim = pow(vec3(10.0), -0.4 * av * vec3(0.75, 1.0, 1.3));
   vColor = aColor * dim * min(1.0, f * f) * boost / keep;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
   ${LOGDEPTH_VERT}
+  #include <clipping_planes_vertex>
 }
 `;
 const clusterFrag = /* glsl */ `
 ${LOGDEPTH_FRAG_PARS}
+#include <clipping_planes_pars_fragment>
 varying vec3 vColor;
 void main() {
+  #include <clipping_planes_fragment>
   ${LOGDEPTH_FRAG}
   float d = length(gl_PointCoord - 0.5) * 2.0;
   gl_FragColor = vec4(vColor, 1.0 - smoothstep(0.35, 1.0, d));
@@ -319,6 +325,8 @@ const FULL_BULGE = 2500 * 63241;
  * lensing, and the S-stars on their measured orbits. Everything sits in a group at Sgr A*'s position, so the
  * vertices stay small numbers that 32-bit floats hold exactly.
  */
+const hole = new Vector3();
+
 export class SgrA {
   readonly group = new Group();
   readonly stars = S_STARS.map((s) => s.id);
@@ -326,16 +334,24 @@ export class SgrA {
   /** The billboard the disk is traced on. */
   readonly quad: Mesh;
   private readonly loops: LineLoop[] = [];
+  /**
+   * Splits the orbits and stars at the hole, across the line of sight, while it bends light: the part behind
+   * is drawn before the frame is bent and the part in front after. Keeps everything when not lensing.
+   */
+  readonly cut = new Plane(new Vector3(), 1);
   private readonly orbitMat = new LineBasicMaterial({
     color: '#9d8cff',
     transparent: true,
     depthWrite: false,
+    clippingPlanes: [this.cut],
   });
   private readonly points: Points;
   private readonly cluster: Points;
   private clusterCount = 0;
   /** Close enough for the disk, the S-stars and their orbits to show. */
   close = false;
+  /** Drawn bigger than it is, to stay visible from far off. */
+  grown = false;
   private readonly starPos: Float32Array;
   // unit vectors of the sky at Sgr A* in ecliptic coordinates: north, east, and away from us
   private readonly axes: [Vec, Vec, Vec];
@@ -426,6 +442,7 @@ export class SgrA {
         sizeAttenuation: false,
         transparent: true,
         depthWrite: false,
+        clippingPlanes: [this.cut],
       }),
     );
     this.points.frustumCulled = false;
@@ -602,6 +619,8 @@ export class SgrA {
         transparent: true,
         depthWrite: false,
         blending: AdditiveBlending,
+        clipping: true,
+        clippingPlanes: [this.cut],
       }),
     );
     pts.frustumCulled = false;
@@ -640,6 +659,7 @@ export class SgrA {
     // grow the hole, rays and all, so it stays visible from far off unless true size is on
     const px = 5.2 * RS * pxPerAu;
     const grow = trueSize || px >= HOLE_MIN_PX ? 1 : HOLE_MIN_PX / Math.max(px, 1e-9);
+    this.grown = grow > 1;
     this.disk.uniforms.size.value = grow;
     this.disk.uniforms.rs.value = RS * grow;
     // the gas turns with the timeline, so it stands still while paused. Each of the two copies lives one
@@ -687,6 +707,24 @@ export class SgrA {
     // among the S-stars the rest step back to an eighth, so the orbits stand out
     cu.boost.value = (this.clusterCount / k) * (1 - 0.875 * near);
     cu.ppa.value = pxPerAu * pr;
+  }
+
+  /** What `cut` splits. */
+  get split() {
+    return [...this.loops, this.points, this.cluster];
+  }
+
+  /** Keeps the side of `cut` away from the camera, or toward it, or (null) all of it. */
+  cutAt(cam: Vector3 | null, front = false) {
+    if (!cam) {
+      this.cut.set(this.cut.normal.set(0, 0, 0), 1);
+      return;
+    }
+    this.group.getWorldPosition(hole);
+    this.cut.setFromNormalAndCoplanarPoint(this.cut.normal.subVectors(hole, cam).normalize(), hole);
+    if (front) {
+      this.cut.negate();
+    }
   }
 
   /**
@@ -741,6 +779,9 @@ export class SgrA {
     }
     return best;
   }
+
+  /** The Schwarzschild radius in AU, for bending the light of what is behind the hole. */
+  static readonly RS = RS;
 
   /** Width on screen of the quad the disk is traced on, given the scale at Sgr A*. */
   quadPx(pxPerAu: number) {

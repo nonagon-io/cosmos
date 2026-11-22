@@ -31,6 +31,7 @@ import { CraftScene, type Frame } from './craft';
 import { ARMS, armBeta, Galaxy, galactic } from './galaxy';
 import { Heliosphere } from './heliosphere';
 import { type LabelEntry, Labels } from './labels';
+import { LensPass } from './lens';
 import { LocalGroup, type LocalGroupRow, M31_SYSTEM } from './localgroup';
 import { LocalVolume, type LocalVolumeRow } from './localvolume';
 import { LowResPass } from './lowres';
@@ -67,6 +68,8 @@ const WEB_EXPOSE_LY = 2e9;
 const HOLE_BUDGET = 300000;
 const HOLE_SLOW_AREA = 50000;
 const HOLE_LAYER = 1;
+// what is between the camera and the hole, drawn again after the frame is bent
+const FRONT_LAYER = 3;
 const ARM_LABEL_R: Record<string, number> = {
   'scutum-centaurus': 5.6,
   'sagittarius-carina': 6.4,
@@ -175,6 +178,9 @@ export class World {
   private readonly holePass = new LowResPass();
   private readonly webPass = new LowResPass(true);
   private holeScale = 1;
+  private readonly lensPass = new LensPass();
+  private lensing = false;
+  private readonly holeView = new Vector3();
   // on a void, out among the galaxies: everything is true to size and nothing of the Milky Way's own shows
   private onVoid = false;
   private holeBudget = HOLE_BUDGET;
@@ -205,6 +211,7 @@ export class World {
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.autoClear = false;
     this.renderer.setClearColor(0x020308, 1);
+    this.renderer.localClippingEnabled = true;
 
     // ecliptic (x, y, z) is scene (x, z, -y): y up is ecliptic north
     const root = new Group();
@@ -339,6 +346,9 @@ export class World {
     if (hole?.at && holePos) {
       this.sgrId = hole.id;
       this.sgr = new SgrA(this.world, holePos, hole.at.ra, hole.at.dec, hole.at.ly / LY_PER_PC);
+      for (const o of this.sgr.split) {
+        o.layers.enable(FRONT_LAYER);
+      }
     }
 
     const { focus, distance } = store.data.timeline.initialView;
@@ -762,7 +772,15 @@ export class World {
       }
       this.holeBudget = Math.max(this.holeBudget, HOLE_BUDGET / 8);
       this.holeScale = Math.min(1, Math.sqrt(this.holeBudget / Math.max(area, 1)));
-      this.sgr.quad.layers.set(this.sgr.close && this.holeScale < 0.95 ? HOLE_LAYER : 0);
+      // only at its real size: a hole grown to stay visible would bend a patch of sky far bigger than it should.
+      // Worth it once the Einstein ring, sqrt(2 Rs d) across at distance d, is a few pixels.
+      this.lensing =
+        this.sgr.close &&
+        !this.sgr.grown &&
+        !onVoid &&
+        Math.sqrt(2 * SgrA.RS * Math.hypot(...toCam)) * ppa * pr > 3;
+      // while lensing, the disk is drawn after the frame is bent, so it isn't bent a second time
+      this.sgr.quad.layers.set(this.sgr.close && (this.holeScale < 0.95 || this.lensing) ? HOLE_LAYER : 0);
       if (onVoid) {
         this.sgr.group.visible = false;
       }
@@ -780,6 +798,8 @@ export class World {
     this.skyCamera.updateProjectionMatrix();
     this.renderer.render(this.sky, this.skyCamera);
     this.renderer.clearDepth();
+    // only what is behind the hole is bent: the rest of the orbits and stars round it are drawn afterwards
+    this.sgr?.cutAt(this.lensing ? cam.position : null);
     this.renderer.render(this.scene, cam);
     if (this.cosmicflows.visible || this.surveys.some((s) => s.visible)) {
       // zoomed in among the galaxies they spread out over the screen, few to a pixel: expose for longer
@@ -787,8 +807,26 @@ export class World {
       this.webPass.gain.value = 4 * MathUtils.clamp((WEB_EXPOSE_LY / zoomLy) ** 0.7, 1, 30);
       this.webPass.render(this.renderer, this.scene, cam, WEB_LAYER, 1);
     }
+    if (this.sgr && this.lensing) {
+      this.sgr.group.getWorldPosition(this.holeView).applyMatrix4(cam.matrixWorldInverse);
+      this.lensPass.render(this.renderer, cam, this.holeView, SgrA.RS);
+    }
     if (this.sgr?.quad.layers.isEnabled(HOLE_LAYER)) {
-      this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
+      if (this.holeScale < 0.95) {
+        this.holePass.render(this.renderer, this.scene, cam, HOLE_LAYER, this.holeScale);
+      } else {
+        const mask = cam.layers.mask;
+        cam.layers.set(HOLE_LAYER);
+        this.renderer.render(this.scene, cam);
+        cam.layers.mask = mask;
+      }
+    }
+    if (this.sgr && this.lensing) {
+      this.sgr.cutAt(cam.position, true);
+      const mask = cam.layers.mask;
+      cam.layers.set(FRONT_LAYER);
+      this.renderer.render(this.scene, cam);
+      cam.layers.mask = mask;
     }
 
     this.crafts.render(this.renderer, cam);

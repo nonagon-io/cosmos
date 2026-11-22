@@ -129,6 +129,11 @@
   focus: sgr-a
   distance: 1.6
   ladder: sgr-a
+- id: sgr-lens
+  name: เลนส์ความโน้มถ่วง
+  focus: sgr-a
+  distance: 9
+  ladder: sgr-a
 - id: sgr-s2-pericentre
   name: ดาว S2 ช่วงเฉียดหลุมดำ
   focus: sgr-a
