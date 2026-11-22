@@ -173,6 +173,7 @@ export const en: Dict = {
   lightKind: 'Which picture',
   eyeLight: 'Rough colours to the eye',
   webbLight: "Webb's infrared colours",
+  hubbleLight: "Hubble's colours",
   photoKind: { visible: 'Visible light', infrared: 'Infrared' },
   photoPart: {
     part: 'Part only',
@@ -192,7 +193,7 @@ export const en: Dict = {
   eyeNote:
     'The colours of the light each gas really gives off, but far brighter than the eye would see them, like a long-exposure photograph. To the eye it would be fainter and paler.',
   pillarsEyeNote:
-    'Our own estimate, not from a photograph: to the eye it would likely be very faint, pinkish red from hydrogen, with the pillars as dark brown shadows. The familiar 1995 Hubble picture is not true colour either; each colour stands for the light of a different gas.',
+    "After Hubble's 2014 picture, which is not true colour: each colour stands for the light of a different gas, oxygen blue, hydrogen green and sulphur red. To the eye it would likely be very faint and pinkish red from hydrogen, with the pillars as dark brown shadows.",
   irNote:
     "Worked out from the same model by the way near-infrared pictures like Webb's usually look, not copied from an infrared picture of this nebula: infrared gets through dust, so the dust that hides things turns see-through and glows gold, and gas glowing red or teal shows blue. All of these colours stand in for light the eye can't see.",
   webbNote:

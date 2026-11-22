@@ -350,7 +350,7 @@ export function setupUI(store: Store, act: Actions) {
     const note = ir ? (photo ? t.webbNote : t.irNote) : photo ? t.pillarsEyeNote : t.eyeNote;
     return `
       <div class="seg ir-seg" role="group" aria-label="${esc(t.lightKind)}">
-        <button type="button" data-ir="0" aria-pressed="${!ir}">${t.eyeLight}</button>
+        <button type="button" data-ir="0" aria-pressed="${!ir}">${photo ? t.hubbleLight : t.eyeLight}</button>
         <button type="button" data-ir="1" aria-pressed="${ir}">${photo ? t.webbLight : t.irLight}</button>
       </div>
       <p class="note">${esc(note)}</p>`;

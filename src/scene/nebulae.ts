@@ -489,32 +489,33 @@ interface PillarLook {
   stars: number;
 }
 
-// as the eye might see them, which no photograph shows: dark brown dust against faint red hydrogen
+// after Hubble's picture of 2014, which gives each gas a colour of its own: steel blue and teal around brown
+// dust, lit gold at the edges that face the cluster
 const EYE_PILLARS: PillarLook = {
-  core: '#140a06',
-  body: '#2e1a10',
-  lit: '#6a3028',
-  tip: '#ff5060',
-  halo: '#ff6f80',
-  haze: ['#ff3355', '#ff6f9c'],
-  absorb: 0.7,
-  bright: 0.03,
-  hazeBright: 0.05,
+  core: '#1e0e0e',
+  body: '#5c2a26',
+  lit: '#b07c48',
+  tip: '#d8b080',
+  halo: '#8cb0aa',
+  haze: ['#2a3e58', '#5a8a92'],
+  absorb: 0.25,
+  bright: 0.3,
+  hazeBright: 0.09,
   stars: 60,
 };
 
 // Webb's NIRCam picture of 2022, which stands infrared for visible colours: gold see-through dust, deep blue
 // behind, and the red tips where jets from stars forming inside strike the gas
 const WEBB_PILLARS: PillarLook = {
-  core: '#5a2c12',
-  body: '#c0701e',
-  lit: '#f2a446',
+  core: '#4a2614',
+  body: '#a8642a',
+  lit: '#e8a850',
   tip: '#ff3a20',
-  halo: '#6a9cff',
-  haze: ['#10246a', '#2c56c4'],
-  absorb: 0.04,
-  bright: 0.16,
-  hazeBright: 0.016,
+  halo: '#5a78b8',
+  haze: ['#18244a', '#34508c'],
+  absorb: 0.15,
+  bright: 0.2,
+  hazeBright: 0.022,
   stars: 700,
 };
 
@@ -1865,10 +1866,11 @@ export class Nebulae {
     // in and around the Solar System the sky is the background picture, which has its own Milky Way; the
     // nebulae come in with the 3D stars, once the camera is out among them
     const out = MathUtils.smoothstep(Math.log10(Math.max(sunDist, 1)), 4.6, 5.4);
-    // a close-up in false colour would clash with the true-colour nebula around it, so that one fades nearby
+    // a close-up in a photograph's colours would clash with the true-colour nebula around it, so that one fades
+    // nearby
     const fade = new Map<string, number>();
     for (const n of this.list) {
-      if (n.covers && n.infrared && this.infrared.has(n.id)) {
+      if (n.covers) {
         const d = Math.hypot(cam[0] - n.center[0], cam[1] - n.center[1], cam[2] - n.center[2]) / AU_PER_LY;
         fade.set(n.covers, MathUtils.smoothstep(d, 20, 45));
       }
