@@ -19,6 +19,9 @@ const MONTHS = [
 
 export const en: Dict = {
   title: 'Cosmos',
+  metaTitle: 'Cosmos · a 3D map from Earth to the edge of the universe',
+  metaDesc:
+    'Fly from Earth out to the edge of the observable universe. Planets, moons and spacecraft sit where NASA/JPL orbit data puts them on any date, among real stars, nebulae and galaxies, with a timeline back to the early universe.',
   loading: 'Loading the cosmos…',
   loadingData: 'Loading orbits…',
   language: 'Language',

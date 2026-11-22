@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run check && vite build",
+    "build": "npm run check && vite build && tsx scripts/pages.ts",
     "preview": "vite preview",
     "check": "tsc && biome check . && tsx scripts/validate-data.ts",
     "validate": "tsx scripts/validate-data.ts",

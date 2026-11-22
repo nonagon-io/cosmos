@@ -1,6 +1,7 @@
 import { dateOf, KM_PER_AU } from './astro/ephemeris';
 import { periodDays, type Vec } from './astro/kepler';
 import type { Body, Region, SpaceEvent, View } from './data/schema';
+import { dropdown } from './dropdown';
 import { esc, fmtDistance, fmtLightTime, fmtMass, fmtPeriod } from './format';
 import { t } from './i18n';
 import { M31_SYSTEM } from './scene/localgroup';
@@ -54,24 +55,7 @@ export function setupUI(store: Store, act: Actions) {
   }
 
   // the layer toggles fold into a dropdown under the filter button
-  const layersBtn = $('layers-btn');
-  const layers = $('layers');
-  const showLayers = (on: boolean) => {
-    layers.hidden = !on;
-    layersBtn.setAttribute('aria-expanded', String(on));
-  };
-  layersBtn.addEventListener('click', () => showLayers(Boolean(layers.hidden)));
-  document.addEventListener('pointerdown', (e) => {
-    if (!layers.hidden && !layers.parentElement?.contains(e.target as Node)) {
-      showLayers(false);
-    }
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !layers.hidden) {
-      showLayers(false);
-      layersBtn.focus();
-    }
-  });
+  dropdown($('layers-btn'), $('layers'));
 
   // scale ladder
   const views = $('views');

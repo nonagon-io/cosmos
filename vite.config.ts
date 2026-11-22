@@ -17,4 +17,4 @@ const analytics = {
   ],
 };
 
-export default defineConfig({ base: './', plugins: [analytics] });
+export default defineConfig({ base: '/', plugins: [analytics] });

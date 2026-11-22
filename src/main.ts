@@ -5,8 +5,10 @@ import type { Vec } from './astro/kepler';
 import { setupBrowse } from './browse';
 import { loadLocalized } from './data/load';
 import { type Body, DataError, type Region, type SpaceEvent, type View } from './data/schema';
+import { dropdown } from './dropdown';
 import { setupHoleClock } from './holeclock';
-import { applyStatic, LOCALES, type Locale, locale, switchLocale, t, takeResume } from './i18n';
+import { applyStatic, LOCALES, type Locale, locale, routeId, switchLocale, t, takeResume } from './i18n';
+import { routeUrl } from './route';
 import { type LocalGroupRow, M31_SYSTEM } from './scene/localgroup';
 import type { LocalVolumeRow } from './scene/localvolume';
 import type { ElementSets } from './scene/particles';
@@ -14,7 +16,7 @@ import { AU_PER_LY, eclipticDir, type StarData, type StarField } from './scene/s
 import type { SurveyManifest, SurveyName } from './scene/survey';
 import { World } from './scene/world';
 import { type Hit, setupSearch } from './search';
-import { COSMIC_RANGE, DEEP_RANGE, Store } from './store';
+import { COSMIC_RANGE, DEEP_RANGE, type Selection, Store } from './store';
 import { setupTimeline } from './timeline';
 import { setupUI } from './ui';
 
@@ -91,8 +93,15 @@ async function json<T>(name: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+const selId = (s: Selection) =>
+  s ? (s.kind === 'body' ? s.body.id : s.kind === 'region' ? s.region.id : s.event.id) : null;
+const selName = (s: Selection) =>
+  s ? (s.kind === 'body' ? s.body.name : s.kind === 'region' ? s.region.name : s.event.title) : null;
+
 async function start() {
   applyStatic();
+  // the build's text for crawlers and screen readers without JS; the card says the same once it opens
+  document.getElementById('about')?.remove();
   let store: Store;
   try {
     store = new Store(await loadLocalized(locale));
@@ -528,17 +537,24 @@ async function start() {
     }
   });
 
-  const langSel = document.getElementById('lang') as HTMLSelectElement;
-  langSel.innerHTML = Object.entries(LOCALES)
-    .map(([k, label]) => `<option value="${k}">${label}</option>`)
+  // each language in its own script, so a reader who can't read the current one still finds theirs
+  const LangNames: Record<Locale, string> = { th: 'ไทย', en: 'English' };
+  const langMenu = document.getElementById('lang-menu') as HTMLElement;
+  (document.getElementById('lang-now') as HTMLElement).textContent = LOCALES[locale];
+  langMenu.innerHTML = Object.entries(LangNames)
+    .map(
+      ([k, name]) =>
+        `<label class="chk"><input type="radio" name="lang" value="${k}"${k === locale ? ' checked' : ''}> <span>${name}</span></label>`,
+    )
     .join('');
-  langSel.value = locale;
-  langSel.addEventListener('change', () => {
+  dropdown(document.getElementById('lang-btn') as HTMLElement, langMenu);
+  langMenu.addEventListener('change', (e) => {
+    const next = (e.target as HTMLInputElement).value as Locale;
     const s = store.selection;
     const sel = s
       ? { kind: s.kind, id: s.kind === 'body' ? s.body.id : s.kind === 'region' ? s.region.id : s.event.id }
       : undefined;
-    switchLocale(langSel.value as Locale, {
+    switchLocale(next, selId(store.selection), {
       day: store.day,
       focus: rig.focusId,
       distance: rig.distance,
@@ -619,6 +635,17 @@ async function start() {
   };
   requestAnimationFrame(loop);
 
+  // the object a /<id>/ link names, if there is one
+  const linked: Selection = routeId
+    ? store.bodyById.has(routeId)
+      ? { kind: 'body', body: store.bodyById.get(routeId) as Body }
+      : store.regionById.has(routeId)
+        ? { kind: 'region', region: store.regionById.get(routeId) as Region }
+        : (() => {
+            const e = store.data.events.find((x) => x.id === routeId);
+            return e ? { kind: 'event', event: e } : null;
+          })()
+    : null;
   if (resume?.sel) {
     const { kind, id } = resume.sel;
     const b = kind === 'body' ? store.bodyById.get(id) : undefined;
@@ -633,9 +660,32 @@ async function start() {
             ? { kind: 'event', event: e }
             : null,
     );
+  } else if (linked) {
+    if (linked.kind === 'body') {
+      actions.goToBody(linked.body);
+    } else if (linked.kind === 'region') {
+      actions.goToRegion(linked.region);
+    } else {
+      actions.goToEvent(linked.event);
+    }
   } else if (!matchMedia('(max-width: 680px), (max-height: 520px)').matches) {
     store.select({ kind: 'body', body: store.bodyById.get('earth') as Body });
   }
+  // Earth opened on its own above stays at the home address; anything picked after that gets its own
+  const follow = (s: Selection) => {
+    const url = routeUrl(locale, selId(s));
+    if (location.pathname !== url) {
+      history.replaceState(null, '', url);
+    }
+    const name = selName(s);
+    document.title = name ? `${name} · ${t.title}` : t.metaTitle;
+  };
+  if (linked || resume?.sel) {
+    follow(store.selection);
+  } else if (routeId) {
+    history.replaceState(null, '', routeUrl(locale, null));
+  }
+  store.on('select', follow);
 
   await document.fonts.ready;
   reveal();

@@ -94,6 +94,8 @@ Focused on a craft, the scale stops are its own: the whole craft (its `radius` i
 
 All data lives in `data/` as YAML and is checked against `src/data/schema.ts` on load and by `npm run validate`.
 
+Every body, region and event has its own page at `/<id>/` (Thai) and `/en/<id>/` (English). `npm run build` writes them with `scripts/pages.ts`, each with its own title, description and link preview, along with `sitemap.xml`. So ids are URLs: rename one only with a redirect page from the old id, or shared links and search results break.
+
 - `bodies.yaml`: every named body. `orbit` says where its position comes from (`engine`, `jupiter`, `moon`, `named`, `craft`); a new `moon`, `named` or `craft` body also needs an entry in `scripts/fetch-data.ts` and a fetch.
 - `regions.yaml`: belts, the heliosphere and the Oort cloud, plus star clusters, nebulae and galaxies placed with `at`.
 - `views.yaml`: the zoom stops in the scale panel. `tilt` views the Galaxy from that many degrees above its plane, and `also` centres the view halfway between `focus` and a second object. `ladder` groups the stops by what the camera is on: `solar` for anything in the Solar System, a region's id for stops of its own (Sgr A* has them, from the shadow out to the S-stars), and `region` for the one stop that frames any other region under its own name. Stops with no ladder are shared from the Galaxy out; on a deep-sky object they keep it in the centre.
