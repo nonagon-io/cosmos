@@ -106,3 +106,5 @@ All data lives in `data/` as YAML and is checked against `src/data/schema.ts` on
 The code is MIT, © 2026 Nonagon Co., Ltd. (see `LICENSE`). It's a demo we keep ourselves, so we don't take pull requests, but you're welcome to fork it.
 
 The data, maps, models and photos are not ours and keep their own licenses, credited above, on the page and on each card. The star files in `public/data` are converted from HYG and stay under CC BY-SA 4.0. Planet maps from Solar System Scope and the photos from ESA/Hubble, ESA/Webb, ESO and NOIRLab are CC BY 4.0; NASA's are public domain.
+
+The live site counts visits with Cloudflare Web Analytics, which sets no cookies and doesn't track people across sites. It's only added to the production build.
