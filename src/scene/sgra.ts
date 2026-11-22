@@ -453,7 +453,7 @@ export class SgrA {
 
   /**
    * The nuclear star cluster, as a model: a few tens of thousands of its brightest stars, mostly old red giants,
-   * thicker toward the middle as measured (density falling as r^-1.5), on circular orbits tilted every way. The
+   * thicker toward the middle as measured (density falling as r^-1.5, then r^-3 past about 0.85 pc), on circular orbits tilted every way. The
    * young blue stars between 0.04 and 0.5 pc share one disk turning clockwise on our sky, tilted as measured
    * (i 130°, Ω 96°; Yelda 2014). No one star here is in its real place, unlike the S-stars.
    */
@@ -491,23 +491,28 @@ export class SgrA {
     const giant = new Color('#ffb27a');
     const yellow = new Color('#fff0d8');
     const blue = new Color('#a9c6ff');
-    const rMax = 2 * AU_PER_PC;
-    for (let n = 0; n < 30000; ) {
-      const r = rMax * rand() ** (2 / 3);
+    // old orange and yellow giants, the same mix in the cluster and the bulge so the one runs into the other
+    const old = (): [Color, number] => [
+      (rand() < 0.75 ? giant : yellow).clone().multiplyScalar(0.3 + rand() * 0.45),
+      rand() < 0.03 ? 2.6 : 1.5,
+    ];
+    // r^-1.5 in the middle, steepening to the bulge's r^-3 at a break picked so the density carries straight on
+    // across 2 pc into the bulge's: cut off there instead it showed from outside as a ball with an edge
+    const n0 = 30000;
+    const nBulge = 130000;
+    const rEdge = 2 * AU_PER_PC;
+    const rBreak = rEdge * Math.exp(-((1.5 * n0 * Math.log(750)) / nBulge - 1) / 1.5);
+    const inCore = 1 / (1 + 1.5 * Math.log(rEdge / rBreak));
+    for (let n = 0; n < n0; ) {
+      const r = rand() < inCore ? rBreak * rand() ** (2 / 3) : rBreak * (rEdge / rBreak) ** rand();
       if (r < 1500) {
         continue;
       }
       n++;
       const d = unit();
-      const bright = rand() < 0.04;
-      add(
-        [d[0] * r, d[1] * r, d[2] * r],
-        cross(d, unit()),
-        (rand() < 0.85 ? giant : yellow).clone().multiplyScalar(bright ? 1 : 0.45 + rand() * 0.35),
-        bright ? 3 : 1.6,
-      );
+      add([d[0] * r, d[1] * r, d[2] * r], cross(d, unit()), ...old());
     }
-    // and on out through the bulge to about 1.5 kpc, as one population thinning as r^-2, so it shows no edge:
+    // and on out through the bulge to about 1.5 kpc, as one population thinning as r^-3, so it shows no edge:
     // the Galaxy model has too few points to fill the sky from in here. Flattened to the Galactic plane about
     // 2:1 beyond the cluster, old orange and yellow stars
     const ra = 192.8595 * MathUtils.DEG2RAD;
@@ -518,20 +523,14 @@ export class SgrA {
       eq[1] * Math.cos(OBLIQUITY) + eq[2] * Math.sin(OBLIQUITY),
       -eq[1] * Math.sin(OBLIQUITY) + eq[2] * Math.cos(OBLIQUITY),
     ];
-    for (let i = 0; i < 130000; i++) {
+    for (let i = 0; i < nBulge; i++) {
       const r = 2 * AU_PER_PC * (1500 / 2) ** rand();
       const d = unit();
       const h = d[0] * pole[0] + d[1] * pole[1] + d[2] * pole[2];
       const flat = 0.5 * MathUtils.smoothstep(r, 20 * AU_PER_PC, 200 * AU_PER_PC);
       const p: Vec = [0, 1, 2].map((c) => (d[c] - flat * h * pole[c]) * r) as Vec;
       const inner = r < 60 * AU_PER_PC;
-      add(
-        p,
-        inner ? cross(d, unit()) : pole,
-        (rand() < 0.75 ? giant : yellow).clone().multiplyScalar(0.3 + rand() * 0.45),
-        rand() < 0.03 ? 2.6 : 1.5,
-        inner ? 0 : 1,
-      );
+      add(p, inner ? cross(d, unit()) : pole, ...old(), inner ? 0 : 1);
     }
     // the bar most of the bulge's light comes from, about 1.5 kpc long and a few hundred pc thick, its near end
     // toward positive longitude about 27 degrees off our line of sight (after Dwek 1995 and Wegg & Gerhard
